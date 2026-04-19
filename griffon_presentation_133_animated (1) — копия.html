@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ГРИФОН — Талисман и ИИ-ассистент РТУ МИРЭА</title>
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.86/build/spline-viewer.js"></script>
+<style>
+/* ─── DESIGN TOKENS ─── */
+:root {
+  --font: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --bg:      #1e1612;
+  --bg2:     #231a14;
+  --bg3:     #160f0b;
+  --surface: rgba(255,255,255,0.055);
+  --surface2:rgba(255,255,255,0.09);
+  --border:  rgba(255,255,255,0.09);
+  --accent:  #c4622d;
+  --accent2: #e07a3f;
+  --accent3: #f0924e;
+  --gold:    #d4af37;
+  --navy:    #003087;
+  --navy2:   #1a4a9e;
+  --white:   #f5f0e8;
+  --muted:   #8a7060;
+  --muted2:  #5a4035;
+  --glow:    rgba(196,98,45,0.18);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  opacity: 0;
+  animation: pageFadeIn 0.9s ease forwards;
+  animation-delay: 0.05s;
+}
+@media (hover: hover) and (pointer: fine) {
+  body, a, button, input, textarea, select,
+  .outfit-card, .emotion-card, .scene-card, .merch-card,
+  .swatch, .cdot, .mtab, .usage-item, .qbtn, .chat-close,
+  .chat-send, .chat-fab, .nav-cta, .cta-btn, .want-btn 
+}
+@media (hover: none), (pointer: coarse) {
+  #cur, #curR { display: none !important; }
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── SPLINE BG ─── */
+spline-viewer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.028;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ─── CURSOR ─── */
+#cur  {
+  width: 8px; height: 8px;
+  background: var(--accent2);
+  border-radius: 50%;
+  position: fixed; pointer-events: none; z-index: 10000;
+  transform: translate(-50%,-50%);
+  box-shadow: 0 0 8px rgba(224,122,63,0.9), 0 0 16px rgba(224,122,63,0.5);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#curR {
+  width: 32px; height: 32px;
+  border: 1.5px solid rgba(224,122,63,0.55);
+  border-radius: 50%;
+  position: fixed; pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: border-color 0.2s, width 0.18s, height 0.18s, opacity 0.2s;
+  opacity: 0;
+}
+body.cursor-ready #cur,
+body.cursor-ready #curR { opacity: 1; }
+body.hovered #curR { width: 46px; height: 46px; border-color: rgba(224,122,63,0.8); }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:var(--bg3); }
+::-webkit-scrollbar-thumb { background:var(--accent); border-radius:2px; }
+
+/* ─── NAV ─── */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:1000;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 40px; height:56px;
+  background:rgba(20,14,10,0.82);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border-bottom:0.5px solid var(--border);
+}
+.nav-brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.nav-logo-badge {
+  background:var(--navy); color:#fff;
+  font-size:10px; font-weight:700; letter-spacing:0.5px;
+  padding:4px 8px; border-radius:6px; line-height:1;
+}
+.nav-logo-text { font-size:13px; font-weight:600; color:var(--white); letter-spacing:-0.2px; }
+.nav-logo-text span { color:var(--accent2); }
+.nav-links { display:flex; gap:20px; list-style:none; }
+.nav-links a { text-decoration:none; color:var(--muted); font-size:12px; font-weight:400; letter-spacing:-0.1px; transition:color 0.2s; white-space:nowrap; }
+.nav-links a:hover, .nav-links a.active { color:var(--white); }
+.nav-right { display:flex; align-items:center; gap:10px; }
+.nav-year { font-size:11px; font-weight:500; letter-spacing:1px; color:var(--muted); }
+.nav-cta {
+  background:rgba(196,98,45,0.15); border:0.5px solid rgba(224,122,63,0.3);
+  color:var(--accent2); font-size:11px; font-weight:500; letter-spacing:0.2px;
+  padding:6px 14px; border-radius:20px; cursor:pointer; transition:all 0.2s;
+  text-decoration:none;
+}
+.nav-cta:hover { background:rgba(196,98,45,0.28); color:var(--accent3); }
+
+/* ─── REVEAL ─── */
+.reveal {
+  opacity: 0;
+  transform: translateY(34px);
+  filter: blur(10px);
+  transition: opacity 0.9s ease, transform 0.9s ease, filter 0.9s ease;
+  will-change: opacity, transform, filter;
+}
+.reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+.d1{transition-delay:0.08s} .d2{transition-delay:0.16s} .d3{transition-delay:0.24s} .d4{transition-delay:0.32s} .d5{transition-delay:0.4s}
+
+/* ─── SECTIONS ─── */
+section { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:96px 48px 72px; position:relative; overflow:hidden; }
+.container { max-width:1160px; width:100%; }
+
+/* ─── LABEL ─── */
+.label { font-size:10px; font-weight:600; letter-spacing:1.8px; text-transform:uppercase; color:var(--accent); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.label::before { content:''; width:0; height:0; display:none; }
+
+/* ─── SECTION H2 ─── */
+.s-h2 { font-size:clamp(36px,5vw,56px); font-weight:700; letter-spacing:-1.5px; line-height:1.05; margin-bottom:16px; }
+.s-body { font-size:15px; font-weight:300; color:var(--muted); line-height:1.7; max-width:480px; margin-bottom:24px; letter-spacing:-0.1px; }
+
+/* ─── YEAR BADGE ─── */
+.year-badge { position:absolute; top:24px; right:48px; font-size:11px; font-weight:500; letter-spacing:1px; color:var(--muted2); }
+
+/* ─── WANT BUTTON (per section) ─── */
+.want-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  border:0.5px solid rgba(224,122,63,0.25); border-radius:100px;
+  color:var(--muted); font-size:11px; font-weight:400; letter-spacing:0.1px;
+  padding:6px 14px; margin-top:28px; cursor:pointer; text-decoration:none;
+  transition:all 0.2s;
+}
+.want-btn:hover { border-color:rgba(224,122,63,0.55); color:var(--accent2); }
+.want-btn svg { width:12px; height:12px; flex-shrink:0; }
+
+/* ═══════════════════════════════════════
+   1. HERO
+══════════════════════════════════════*/
+#hero {
+  background:
+    radial-gradient(ellipse 80% 70% at 70% 55%, rgba(196,98,45,0.13) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 15% 80%, rgba(0,48,135,0.08) 0%, transparent 60%),
+    linear-gradient(180deg, #0d0906 0%, var(--bg) 35%);
+  min-height:100vh;
+  position: relative;
+  overflow: hidden;
+}
+#hero spline-viewer {
+  pointer-events: auto;
+}
+/* Canvas BG particles */
+#hero-canvas { position:absolute; inset:0; pointer-events:none; z-index:0; }
+.hero-inner { display:grid; grid-template-columns:1fr 1fr; gap:0; align-items:center; width:100%; max-width:1160px; position:relative; z-index:1; pointer-events:none; }
+/* Re-enable only on truly interactive children */
+.hero-inner a, .hero-inner button, .hero-inner .want-btn { pointer-events:auto; }
+.hero-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(196,98,45,0.1); border:0.5px solid rgba(224,122,63,0.3);
+  border-radius:20px; padding:5px 13px; font-size:11px; font-weight:500;
+  color:var(--accent2); margin-bottom:24px; letter-spacing:0.3px;
+}
+.hero-dot { width:5px; height:5px; border-radius:50%; background:var(--accent2); animation:blink 2s infinite; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.hero-title {
+  font-size:clamp(80px,14vw,152px); font-weight:800;
+  letter-spacing:-4px; line-height:0.88; margin-bottom:24px;
+  background:linear-gradient(135deg,#fff 10%,rgba(255,255,255,0.85) 45%,var(--accent2) 80%,#fff 100%);
+  background-size: 220% 220%;
+  animation: gradientShift 8s ease-in-out infinite;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.hero-tagline { font-size:18px; font-weight:300; color:var(--muted); letter-spacing:-0.2px; margin-bottom:40px; line-height:1.5; max-width:380px; }
+.hero-meta { display:flex; gap:32px; flex-wrap:wrap; }
+.meta-item { display:flex; flex-direction:column; gap:3px; }
+.meta-lbl { font-size:9px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted2); }
+.meta-val { font-size:14px; font-weight:500; color:var(--white); letter-spacing:-0.2px; }
+/* Hero right */
+.hero-right { display:flex; justify-content:center; align-items:flex-end; position:relative; height:700px; overflow:visible; }
+.hero-griffon-wrap { position:relative; display:flex; align-items:flex-end; justify-content:center; width:100%; }
+.hero-griffon-img {
+ max-width:780px; position:relative; z-index:2;
+  filter:drop-shadow(0 32px 64px rgba(196,98,45,0.25));
+  animation:heroFloat 5.5s ease-in-out infinite;
+}
+@keyframes heroFloat{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-16px) rotate(0.5deg)}}
+.hero-glow { position:absolute; bottom:-10px; width:300px; height:60px; background:radial-gradient(ellipse,rgba(196,98,45,0.35) 0%,transparent 70%); filter:blur(20px); z-index:1; }
+.hero-orbit { position:absolute; bottom:50px; width:340px; height:340px; border:1px dashed rgba(196,98,45,0.12); border-radius:50%; animation:spin 28s linear infinite; }
+.hero-orbit::after { content:''; position:absolute; width:7px; height:7px; background:var(--accent); border-radius:50%; top:-3.5px; left:50%; transform:translateX(-50%); box-shadow:0 0 10px var(--accent),0 0 20px var(--accent); }
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.hero-2026 { position:absolute; top:80px; right:48px; font-size:13px; font-weight:500; letter-spacing:1px; color:rgba(245,240,232,0.25); z-index:1; }
+.hero-brand { position:absolute; bottom:40px; left:0; display:flex; align-items:center; gap:12px; }
+.brand-mirea { background:var(--navy); color:#fff; font-size:9px; font-weight:700; letter-spacing:0.5px; padding:5px 9px; border-radius:6px; }
+.brand-art { font-size:11px; font-weight:400; color:var(--muted); letter-spacing:0.2px; }
+.brand-art strong { font-weight:600; color:var(--white); }
+/* Scroll hint */
+.scroll-hint { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:5px; color:var(--muted2); font-size:9px; letter-spacing:1.5px; text-transform:uppercase; animation:bob 2.5s ease-in-out infinite; }
+.scroll-line { width:1px; height:32px; background:linear-gradient(to bottom,var(--muted2),transparent); }
+@keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
+
+/* ─── MARQUEE ─── *//* ─── MARQUEE ─── */
+.marquee-strip { overflow:hidden; border-top:0.5px solid var(--border); border-bottom:0.5px solid var(--border); background:var(--bg3); padding:13px 0; }
+.marquee-track { display:flex; white-space:nowrap; animation:ticker 22s linear infinite; }
+.marquee-item { font-size:10px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); padding:0 28px; display:flex; align-items:center; gap:34px; }
+.marquee-item::after { content:"·"; color:var(--accent); font-size:14px; }
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ═══════════════════════════════════════
+   2. ЗНАКОМСТВО
+══════════════════════════════════════*/
+#intro { background:var(--bg2); border-top:0.5px solid var(--border); }
+.intro-grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; }
+.profile-card {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:20px; padding:32px;
+  backdrop-filter:blur(12px);
+}
+.profile-name { font-size:32px; font-weight:700; letter-spacing:-1px; margin-bottom:4px; }
+.profile-age { font-size:13px; color:var(--muted); margin-bottom:24px; }
+.profile-divider { height:0.5px; background:var(--border); margin:16px 0; }
+.prow { margin-bottom:16px; }
+.prow:last-child { margin-bottom:0; }
+.prow-label { font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+.tags { display:flex; flex-wrap:wrap; gap:6px; }
+.tag { background:rgba(196,98,45,0.1); border:0.5px solid rgba(196,98,45,0.2); border-radius:100px; padding:4px 12px; font-size:12px; font-weight:500; color:var(--accent2); }
+.tag.blue { background:rgba(0,48,135,0.3); border-color:rgba(100,140,230,0.25); color:#7da3e8; }
+.intro-griffon { display:flex; justify-content:center; position:relative; }
+.intro-griffon-img {
+  width:100%;
+  filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));
+  animation:heroFloat 4.5s ease-in-out infinite;
+}
+.intro-griffon::after { content:''; position:absolute; bottom:-10px; width:180px; height:28px; background:radial-gradient(ellipse,rgba(196,98,45,0.22),transparent 70%); filter:blur(10px); }
+.intro-griffon { transition:transform 0.08s linear; }
+
+/* — intro fx — */
+.profile-card { transition:transform 0.12s ease; transform-style:preserve-3d; position:relative; overflow:visible; }
+.profile-card::before {
+  content:''; position:absolute; inset:-40px; z-index:-1; border-radius:40px;
+  background:radial-gradient(ellipse at 50% 50%,rgba(196,98,45,0.18) 0%,transparent 70%);
+  animation:ambientPulse 4s ease-in-out infinite; pointer-events:none;
+}
+@keyframes ambientPulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+.profile-divider { transition:width 0.55s ease; width:0; }
+.profile-card.dividers-in .profile-divider { width:100%; }
+@keyframes tagPop {
+  0%   { opacity:0; transform:scale(0.5); }
+  70%  { transform:scale(1.1); }
+  100% { opacity:1; transform:scale(1); }
+}
+#intro .tag { opacity:0; }
+#intro .tags-revealed .tag { animation:tagPop 0.38s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+#intro .tags-revealed .tag:nth-child(1){animation-delay:0.00s}
+#intro .tags-revealed .tag:nth-child(2){animation-delay:0.07s}
+#intro .tags-revealed .tag:nth-child(3){animation-delay:0.14s}
+#intro .tags-revealed .tag:nth-child(4){animation-delay:0.21s}
+.tag { transition:box-shadow 0.2s,transform 0.2s,border-color 0.2s; }
+.tag:hover { box-shadow:0 0 14px rgba(196,98,45,0.45); transform:scale(1.07); border-color:rgba(196,98,45,0.55); }
+.tag.blue:hover { box-shadow:0 0 14px rgba(100,140,230,0.45); border-color:rgba(100,140,230,0.45); }
+
+/* ═══════════════════════════════════════
+   3. ПРОЦЕСС СОЗДАНИЯ
+══════════════════════════════════════*/
+#creation { background:var(--bg3); border-top:0.5px solid var(--border); }
+.creation-grid { display:grid; grid-template-columns:1fr 2fr 1fr; gap:24px; margin-top:40px; margin-bottom:24px; align-items:stretch; }
+/* Moodboard */
+.moodboard {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:16px;
+  padding:16px; min-height:360px; display:flex; flex-direction:column;
+}
+.moodboard-label { font-size:10px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+.moodboard-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; flex:1; }
+.moodboard-cell {
+  background:rgba(255,255,255,0.04); border:0.5px solid var(--border); border-radius:8px;
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:9px;
+  color:var(--muted2); text-align:center; line-height:1.3;
+}
+.moodboard-cell.tall { grid-row:span 2; aspect-ratio:auto; }
+/* 3D Carousel */
+.carousel-wrap { display:flex; flex-direction:column; gap:12px; }
+.carousel-box {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:16px;
+  overflow:hidden; position:relative;
+}
+.carousel-slides { display:flex; transition:transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94); }
+.carousel-slide {
+  min-width:100%; aspect-ratio:4/3; display:grid; grid-template-columns:1fr 1fr;
+  background:rgba(196,98,45,0.04);
+}
+.view-cell {
+  display:flex; align-items:center; justify-content:center;
+  border:0.5px solid var(--border); position:relative;
+}
+.view-lbl { position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:9px; letter-spacing:1px; color:var(--muted2); text-transform:uppercase; }
+.view-ph {
+  width:80px; height:80px;
+  background:rgba(196,98,45,0.08); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; color:var(--muted2); text-align:center; line-height:1.3;
+}
+.carousel-hint { text-align:center; font-size:10px; color:var(--muted2); letter-spacing:0.5px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.carousel-dots { display:flex; gap:6px; justify-content:center; }
+.cdot { width:6px; height:6px; border-radius:50%; background:var(--muted2); cursor:pointer; transition:background 0.2s, width 0.2s; }
+.cdot.active { background:var(--accent2); width:18px; border-radius:3px; }
+/* Wireframe + palette col */
+.palette-col { display:flex; flex-direction:column; gap:16px; }
+.wireframe-box {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:16px;
+  padding:16px; min-height:200px; display:flex; flex-direction:column;
+}
+.wireframe-label { font-size:10px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.wireframe-ph {
+  flex:1; background:rgba(196,98,45,0.04); border:1px dashed rgba(196,98,45,0.15);
+  border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:9px; color:var(--muted2); text-align:center; padding:16px;
+}
+.palette-box { background:var(--surface); border:0.5px solid var(--border); border-radius:16px; padding:16px; }
+.palette-label { font-size:10px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.palette-row { display:flex; height:44px; border-radius:8px; overflow:hidden; border:0.5px solid var(--border); margin-bottom:6px; }
+.swatch { flex:1; cursor:pointer; transition:flex 0.25s ease; position:relative; }
+.swatch:hover { flex:2; }
+.swatch-hex { position:absolute; bottom:4px; left:6px; font-size:7px; font-weight:700; opacity:0; transition:opacity 0.2s; text-transform:uppercase; }
+.swatch:hover .swatch-hex { opacity:1; }
+
+/* ═══════════════════════════════════════
+   4. РАЗНЫЕ ОБРАЗЫ
+══════════════════════════════════════*/
+#outfits { background:var(--bg2); border-top:0.5px solid var(--border); }
+.outfit-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:40px; }
+.outfit-card {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:20px;
+  overflow:hidden; text-align:center; cursor:pointer; position:relative;
+  transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.28s;
+}
+.outfit-card:hover { transform:translateY(-8px) scale(1.02); border-color:rgba(224,122,63,0.35); box-shadow:0 24px 48px rgba(196,98,45,0.14); }
+.outfit-img {
+  width:100%; aspect-ratio:3/4;
+  background:linear-gradient(180deg,rgba(196,98,45,0.06) 0%,rgba(196,98,45,0.03) 100%);
+  display:flex; align-items:center; justify-content:center;
+}
+.outfit-icon { font-size:48px; opacity:0.4; }
+.outfit-footer { padding:16px; border-top:0.5px solid var(--border); }
+.outfit-name { font-size:14px; font-weight:600; letter-spacing:-0.2px; margin-bottom:4px; }
+.outfit-desc { font-size:11px; color:var(--muted); line-height:1.4; }
+
+/* ═══════════════════════════════════════
+   5. РАЗНЫЕ ЭМОЦИИ
+══════════════════════════════════════*/
+#emotions { background:var(--bg3); border-top:0.5px solid var(--border); }
+.emotion-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-top:40px; }
+.emotion-card {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:20px;
+  text-align:center; cursor:pointer; overflow:hidden;
+  transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.28s;
+}
+.emotion-card:hover { transform:translateY(-8px) scale(1.02); border-color:rgba(224,122,63,0.4); box-shadow:0 24px 48px rgba(196,98,45,0.18); }
+.emotion-img {
+  width:100%; aspect-ratio:3/4;
+  background:linear-gradient(160deg,rgba(196,98,45,0.07),rgba(196,98,45,0.03));
+  display:flex; align-items:center; justify-content:center;
+}
+.emotion-emoji { font-size:64px; filter:drop-shadow(0 4px 12px rgba(196,98,45,0.3)); }
+.emotion-footer { padding:14px; border-top:0.5px solid var(--border); }
+.emotion-name { font-size:15px; font-weight:600; letter-spacing:-0.3px; }
+
+/* ═══════════════════════════════════════
+   6. ГДЕ ИСПОЛЬЗОВАТЬ
+══════════════════════════════════════*/
+#usage { background:var(--bg2); border-top:0.5px solid var(--border); }
+.usage-wrap { display:grid; grid-template-columns:1fr 1.2fr; gap:80px; align-items:center; }
+.usage-griffon { display:flex; justify-content:center; position:relative; }
+.usage-griffon-img {
+  width:300px;
+  filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));
+  animation:heroFloat 5s ease-in-out infinite;
+}
+.usage-griffon::after { content:''; position:absolute; bottom:-10px; width:180px; height:28px; background:radial-gradient(ellipse,rgba(196,98,45,0.2),transparent 70%); filter:blur(10px); }
+.usage-list { display:flex; flex-direction:column; gap:16px; }
+.usage-item {
+  display:flex; align-items:flex-start; gap:16px;
+  background:var(--surface); border:0.5px solid var(--border); border-radius:16px;
+  padding:20px; transition:border-color 0.2s, transform 0.2s;
+}
+.usage-item:hover { border-color:rgba(224,122,63,0.3); transform:translateX(4px); }
+.usage-icon {
+  width:40px; height:40px; border-radius:12px;
+  background:rgba(196,98,45,0.1); border:0.5px solid rgba(196,98,45,0.2);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  color:var(--accent2);
+}
+.usage-icon svg { width:20px; height:20px; }
+.usage-title { font-size:14px; font-weight:600; letter-spacing:-0.2px; margin-bottom:4px; }
+.usage-desc { font-size:12px; color:var(--muted); line-height:1.5; }
+
+/* ═══════════════════════════════════════
+   7–9. ПРИМЕР НА САЙТЕ
+══════════════════════════════════════*/
+#website { background:var(--bg3); border-top:0.5px solid var(--border); }
+.laptop-wrap { display:flex; justify-content:center; margin-top:40px; position:relative; }
+/* Laptop shell */
+.laptop {
+  width:720px; background:linear-gradient(180deg,#2a2a2a,#1a1a1a); border-radius:16px 16px 0 0;
+  padding:12px; box-shadow:0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07);
+  position:relative;
+}
+.laptop-screen { background:#0f0f0f; border-radius:8px; overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.06); }
+.laptop-notch { width:80px; height:6px; background:#111; border-radius:0 0 6px 6px; margin:0 auto 0; position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:10; }
+/* Site inside laptop */
+.site-mockup { background:#fff; color:#222; font-family:sans-serif; font-size:8px; line-height:1; position:relative; }
+.site-topbar { background:#003087; color:#fff; padding:4px 8px; display:flex; align-items:center; justify-content:space-between; font-size:7px; }
+.site-topbar-left { display:flex; align-items:center; gap:6px; }
+.site-victory { background:#e63; padding:2px 5px; border-radius:2px; font-size:6px; font-weight:700; }
+.site-nav { background:#fff; border-bottom:1px solid #eee; padding:6px 10px; display:flex; align-items:center; justify-content:space-between; }
+.site-nav-logo { font-size:9px; font-weight:700; color:#003087; display:flex; align-items:center; gap:4px; }
+.site-nav-links { display:flex; gap:8px; font-size:6px; color:#555; }
+.site-menu-btn { background:#003087; color:#fff; padding:3px 7px; border-radius:3px; font-size:6px; font-weight:600; }
+.site-hero { display:grid; grid-template-columns:1.5fr 1fr; height:200px; }
+.site-hero-left { background:linear-gradient(135deg,#1a3a8f,#0050cc); padding:12px; display:flex; flex-direction:column; justify-content:flex-end; position:relative; }
+.site-eagle { width:40px; height:40px; background:radial-gradient(circle,#d4af37,#b8860b); border-radius:50%; position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; align-items:center; justify-content:center; font-size:16px; }
+.site-hero-text { color:#fff; }
+.site-hero-text h3 { font-size:9px; font-weight:700; margin-bottom:3px; line-height:1.3; }
+.site-hero-text p { font-size:6px; color:rgba(255,255,255,0.7); line-height:1.4; }
+.site-hero-link { color:#9ec; font-size:6px; text-decoration:underline; }
+.site-hero-right { background:#f5f5f5; display:grid; grid-template-rows:1fr 1fr; }
+.site-mega { background:linear-gradient(135deg,#1a2a4a,#2a3a6a); padding:8px; position:relative; overflow:hidden; }
+.site-mega-title { font-size:8px; font-weight:700; color:#fff; }
+.site-mega-sub { font-size:6px; color:rgba(255,255,255,0.7); margin-top:2px; }
+.site-admit { background:#fff; border-top:1px solid #eee; padding:8px; }
+.site-admit-title { font-size:7px; font-weight:700; color:#003087; }
+.site-admit-link { font-size:6px; color:#555; margin-top:2px; }
+/* Griffon chat widget */
+.site-widget {
+  position:absolute; bottom:8px; right:8px;
+  width:110px; z-index:10;
+}
+.site-widget-griffon {
+  width:50px; height:50px;
+  background:radial-gradient(circle,rgba(196,98,45,0.3),rgba(196,98,45,0.1)); border-radius:50%;
+  position:absolute; bottom:0; right:4px;
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+}
+.site-bubble {
+  background:#fff; border-radius:8px 8px 0 8px; padding:6px 8px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15); font-size:6.5px; color:#222;
+  margin-bottom:4px; position:relative; max-width:90px; line-height:1.4;
+  border:1px solid rgba(0,48,135,0.1);
+}
+.site-bubble strong { color:#003087; }
+.site-open-btn {
+  background:var(--accent2); color:#fff; border:none; border-radius:12px;
+  padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer;
+  transition:all 0.2s; margin-top:20px; display:block; margin-left:auto; margin-right:auto;
+  letter-spacing:-0.2px; box-shadow:0 8px 24px rgba(196,98,45,0.3);
+}
+.site-open-btn:hover { background:var(--accent3); transform:translateY(-2px); box-shadow:0 12px 32px rgba(196,98,45,0.4); }
+/* Laptop base */
+.laptop-base { width:760px; height:16px; background:linear-gradient(180deg,#2e2e2e,#1a1a1a); border-radius:0 0 12px 12px; margin:0 auto; border-top:0.5px solid rgba(255,255,255,0.05); position:relative; }
+.laptop-base::after { content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:120px; height:3px; background:rgba(255,255,255,0.08); border-radius:0 0 4px 4px; }
+/* ─── CHAT MODAL ─── */
+
+/* Chat theming variables — warm dark (default) */
+#chat-modal-wrap {
+  --ch-bg:       #1E1209;
+  --ch-surface:  #2C1D0E;
+  --ch-border:   #3D2510;
+  --ch-text:     #F0E6D3;
+  --ch-muted:    #9E7A55;
+  --ch-accent:   #E87C25;
+  --ch-accent-h: #F5921A;
+  --ch-user-bg:  #5C3210;
+  --ch-user-txt: #F0E6D3;
+  --ch-bot-bg:   #2C1D0E;
+  --ch-bot-txt:  #F0E6D3;
+  --ch-chip-bg:  #2E1C0C;
+  --ch-chip-bd:  #E87C25;
+  --ch-chip-txt: #F0C090;
+  --ch-hdr-bg:   #231508;
+  --ch-input-bg: #2A1A09;
+  --ch-send-bg:  #E87C25;
+  --ch-shadow:   0 24px 80px rgba(0,0,0,0.65), 0 2px 8px rgba(0,0,0,0.25);
+}
+/* Bonus: even deeper dark variant */
+#chat-modal-wrap.dark-theme {
+  --ch-bg:       #140C04;
+  --ch-surface:  #1E1108;
+  --ch-border:   #2A1808;
+  --ch-text:     #EDE0CC;
+  --ch-muted:    #8A6840;
+  --ch-hdr-bg:   #180E05;
+  --ch-input-bg: #1C1206;
+  --ch-bot-bg:   #1E1108;
+}
+
+/* ── Chat keyframes ── */
+@keyframes dot-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.5; transform:scale(0.85); }
+}
+@keyframes dot-ring {
+  0%   { transform:scale(1);   opacity:0.6; }
+  100% { transform:scale(2.4); opacity:0;   }
+}
+@keyframes glow-pulse {
+  0%,100% { box-shadow:0 0 4px 2px rgba(232,124,37,0.4); }
+  50%      { box-shadow:0 0 14px 6px rgba(232,124,37,0.75); }
+}
+@keyframes fadeSlideInBot {
+  from { opacity:0; transform:translateY(12px) translateX(-10px); }
+  to   { opacity:1; transform:translateY(0)    translateX(0); }
+}
+@keyframes fadeSlideInUser {
+  from { opacity:0; transform:translateY(12px) translateX(10px); }
+  to   { opacity:1; transform:translateY(0)    translateX(0); }
+}
+@keyframes chipAppear {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes welcomeAvatarIn {
+  from { opacity:0; transform:scale(0.7); }
+  to   { opacity:1; transform:scale(1); }
+}
+@keyframes welcomeTextIn {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes orbFloat {
+  0%,100% { transform:translateY(0)   scale(1); }
+  50%      { transform:translateY(-18px) scale(1.08); }
+}
+@keyframes scrollBtnBounce {
+  0%,100% { transform:translateY(0); }
+  50%      { transform:translateY(5px); }
+}
+@keyframes sendIconHover { to { transform:rotate(15deg) scale(1.1); } }
+@keyframes sendRipple {
+  0%   { box-shadow:0 0 0 0 rgba(232,124,37,0.55); }
+  100% { box-shadow:0 0 0 14px rgba(232,124,37,0); }
+}
+
+/* Backdrop */
+.chat-backdrop {
+  position: fixed; inset: 0; z-index: 1999;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.chat-backdrop.open { opacity: 1; pointer-events: auto; }
+
+/* Modal wrap — flex centering */
+#chat-modal-wrap {
+  /* Use both position strategies for max compat */
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  /* Explicit viewport units as fallback */
+  width: 100vw; height: 100vh;
+  z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  pointer-events: none; opacity: 0;
+  /* No visibility transition — it can lag */
+  transition: opacity 0.28s ease;
+}
+#chat-modal-wrap:not(.open) { pointer-events: none; }
+#chat-modal-wrap.open { pointer-events: auto; opacity: 1; }
+
+/* Chat card */
+.chat-box {
+  background: var(--ch-bg); border-radius: 24px;
+  width: min(960px, 100%);
+  height: min(680px, calc(100vh - 40px));
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--ch-shadow);
+  border: 1px solid var(--ch-border);
+  transform: translateY(20px) scale(0.97);
+  transition: transform 0.35s cubic-bezier(0.34,1.4,0.64,1);
+}
+@supports (height: 100dvh) {
+  .chat-box { height: min(680px, calc(100dvh - 40px)); }
+}
+#chat-modal-wrap.open .chat-box { transform: translateY(0) scale(1); }
+
+/* Header */
+.chat-header {
+  background: var(--ch-hdr-bg); padding: 14px 18px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--ch-border); flex-shrink: 0;
+}
+.chat-avatar-wrap {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  animation: glow-pulse 3s ease-in-out infinite;
+  position: relative;
+}
+/* status dot — pulsing green online indicator */
+.status-dot {
+  position: absolute; bottom: 1px; right: 1px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #22C55E;
+  border: 2px solid var(--ch-hdr-bg);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+.status-dot::after {
+  content: ''; position: absolute; inset: -3px;
+  border-radius: 50%; border: 2px solid #22C55E;
+  animation: dot-ring 2s ease-out infinite;
+}
+.chat-title-wrap { flex: 1; min-width: 0; }
+.chat-title { font-size: 15px; font-weight: 700; color: var(--ch-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-subtitle { font-size: 11px; color: #22C55E; margin-top: 1px; font-weight: 500; }
+.blink-dot { animation: dot-pulse 1.4s ease-in-out infinite; display: inline-block; }
+.chat-header-btns { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.ch-icon-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(232,124,37,0.06); border: 1px solid var(--ch-border);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--ch-muted); transition: all 0.18s; font-size: 15px;
+}
+.ch-icon-btn:hover { background: rgba(232,124,37,0.14); color: var(--ch-text); }
+.ch-icon-btn:focus-visible { outline: 2px solid var(--ch-accent); outline-offset: 2px; }
+.ch-close-btn:hover { background: rgba(220,38,38,0.1); color: #dc2626; transform: rotate(90deg); }
+
+/* Messages */
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 20px 20px 12px;
+  display: flex; flex-direction: column; gap: 14px;
+  scroll-behavior: smooth; background: var(--ch-bg);
+  min-height: 0;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: rgba(232,124,37,0.2); border-radius: 4px; }
+
+.chat-msg { display: flex; gap: 10px; max-width: 100%; }
+.chat-msg.bot  { align-items: flex-end; animation: fadeSlideInBot  0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+.chat-msg.user { flex-direction: row-reverse; align-items: flex-end; animation: fadeSlideInUser 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+.msg-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(232,124,37,0.25);
+}
+.msg-content { display: flex; flex-direction: column; gap: 4px; max-width: 72%; }
+.chat-msg.user .msg-content { align-items: flex-end; }
+.msg-bubble {
+  padding: 11px 15px; border-radius: 18px 18px 18px 4px;
+  font-size: 14px; line-height: 1.58; word-break: break-word;
+  background: var(--ch-bot-bg); color: var(--ch-bot-txt);
+  border: 1px solid var(--ch-border); box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.chat-msg.user .msg-bubble {
+  background: var(--ch-user-bg); color: var(--ch-user-txt);
+  border-color: transparent; border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 2px 10px rgba(92,50,16,0.35);
+}
+.msg-bubble a { color: var(--ch-accent); text-decoration: underline; }
+.chat-msg.user .msg-bubble a { color: #FBBF7A; }
+.msg-bubble strong { font-weight: 700; }
+.msg-bubble ul, .msg-bubble ol { margin: 6px 0 6px 18px; }
+.msg-bubble li { margin: 2px 0; }
+.msg-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ch-muted); padding: 0 4px; }
+.chat-msg.user .msg-meta { flex-direction: row-reverse; }
+.copy-btn {
+  background: none; border: none; cursor: pointer; color: var(--ch-muted);
+  padding: 2px 4px; border-radius: 4px; font-size: 11px;
+  transition: all 0.15s; opacity: 0;
+}
+.chat-msg:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { color: var(--ch-accent); background: rgba(232,124,37,0.1); }
+
+/* Typing indicator */
+.typing-indicator { display: flex; gap: 5px; align-items: center; padding: 13px 16px; }
+.typing-indicator span {
+  width: 8px; height: 8px; border-radius: 50%; background: #E87C25;
+  animation: typingBounce 1.3s ease-in-out infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+  0%,60%,100% { transform:translateY(0);   opacity:0.45; }
+  30%          { transform:translateY(-8px); opacity:1; }
+}
+
+/* Quick chips */
+.chat-chips {
+  padding: 10px 16px 8px; display: flex; gap: 7px; flex-wrap: wrap;
+  background: var(--ch-bg); border-top: 1px solid var(--ch-border); flex-shrink: 0;
+}
+.chip {
+  background: var(--ch-chip-bg); border: 1px solid var(--ch-chip-bd);
+  border-radius: 100px; padding: 6px 14px;
+  font-size: 12px; font-weight: 500; color: var(--ch-chip-txt);
+  cursor: pointer; transition: all 0.18s; font-family: var(--font); white-space: nowrap;
+  opacity: 0;
+  animation: chipAppear 0.35s ease both;
+  transform: translateY(6px);
+}
+.chip:nth-child(1) { animation-delay: 0.05s; }
+.chip:nth-child(2) { animation-delay: 0.15s; }
+.chip:nth-child(3) { animation-delay: 0.25s; }
+.chip:nth-child(4) { animation-delay: 0.35s; }
+.chip:nth-child(5) { animation-delay: 0.45s; }
+.chip:nth-child(6) { animation-delay: 0.55s; }
+.chip:hover {
+  background: #4A2A10; border-color: var(--ch-accent-h);
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px rgba(232,124,37,0.25);
+}
+.chip:focus-visible { outline: 2px solid var(--ch-accent); outline-offset: 2px; }
+
+/* Input area */
+.chat-input-area {
+  padding: 12px 16px 16px; background: var(--ch-hdr-bg);
+  border-top: 1px solid var(--ch-border); flex-shrink: 0;
+}
+.chat-input-row {
+  display: flex; gap: 10px; align-items: flex-end;
+  background: var(--ch-input-bg); border: 1.5px solid var(--ch-border);
+  border-radius: 16px; padding: 8px 8px 8px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.chat-input-row:focus-within {
+  border-color: #E87C25;
+  box-shadow: 0 0 0 3px rgba(232,124,37,0.12);
+}
+.chat-input {
+  flex: 1; background: none; border: none; outline: none;
+  font-size: 15px; line-height: 1.5; color: var(--ch-text);
+  font-family: var(--font); resize: none;
+  min-height: 24px; max-height: 120px; overflow-y: auto;
+}
+.chat-input::placeholder { color: var(--ch-muted); }
+.chat-send-btn {
+  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+  background: #E87C25; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.18s, transform 0.2s, box-shadow 0.2s;
+  align-self: flex-end; overflow: hidden; position: relative;
+}
+.chat-send-btn svg { transition: transform 0.2s ease; }
+.chat-send-btn:hover:not(:disabled) {
+  background: #F5A040; transform: scale(1.05);
+}
+.chat-send-btn:hover:not(:disabled) svg { transform: rotate(15deg) scale(1.1); }
+.chat-send-btn:active:not(:disabled) {
+  transform: scale(0.9);
+  animation: sendRipple 0.4s ease-out;
+}
+.chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.chat-send-btn:focus-visible { outline: 2px solid #E87C25; outline-offset: 2px; }
+
+/* Welcome */
+.chat-welcome {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 32px 24px; gap: 12px; margin: auto;
+  position: relative;
+}
+/* floating orbs */
+.chat-welcome::before,
+.chat-welcome::after {
+  content: ''; position: absolute; border-radius: 50%;
+  pointer-events: none; filter: blur(40px);
+}
+.chat-welcome::before {
+  width: 180px; height: 180px;
+  background: rgba(232,124,37,0.18);
+  top: -40px; right: -30px;
+  animation: orbFloat 6s ease-in-out infinite;
+}
+.chat-welcome::after {
+  width: 120px; height: 120px;
+  background: rgba(232,124,37,0.12);
+  bottom: 10px; left: -20px;
+  animation: orbFloat 8s ease-in-out infinite 1.5s;
+}
+.chat-welcome-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+ 
+  margin-bottom: 8px; position: relative; z-index: 1;
+  animation: welcomeAvatarIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both
+}
+.chat-welcome h3 {
+  font-size: 20px; font-weight: 700; color: var(--ch-text); margin: 0;
+  animation: welcomeTextIn 0.4s ease 0.3s both;
+}
+.chat-welcome p {
+  font-size: 14px; color: var(--ch-muted); line-height: 1.5; max-width: 340px;
+  animation: welcomeTextIn 0.4s ease 0.5s both;
+}
+
+/* FAB */
+.chat-fab {
+  position: fixed; bottom: 28px; right: 28px; z-index: 1900;
+  width: 60px; height: 60px; border-radius: 50%;
+  background: #E87C25;
+  border: 2px solid #E87C25; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(232,124,37,0.45);
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s;
+  animation: fabPulse 3.5s ease-in-out infinite;
+}
+.chat-fab:hover { transform: scale(1.12); box-shadow: 0 14px 40px rgba(232,124,37,0.6); }
+@keyframes fabPulse {
+  0%,100% { box-shadow: 0 8px 28px rgba(232,124,37,0.45), 0 0 0 0 rgba(232,124,37,0.15); }
+  60%      { box-shadow: 0 8px 28px rgba(232,124,37,0.45), 0 0 0 14px rgba(232,124,37,0); }
+}
+.chat-fab-tooltip {
+  position: absolute; right: 70px; top: 50%; transform: translateY(-50%);
+  background: var(--bg2); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 6px 12px; font-size: 12px; font-weight: 500;
+  white-space: nowrap; color: var(--white); box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  pointer-events: none; opacity: 0; transition: opacity 0.2s;
+}
+.chat-fab:hover .chat-fab-tooltip { opacity: 1; }
+
+/* Mobile */
+@media (max-width: 767px) {
+  #chat-modal-wrap { padding: 0; align-items: stretch; justify-content: stretch; }
+  .chat-box { width: 100%; height: 100vh; border-radius: 0; max-height: none; flex: 1; }
+  #chat-modal-wrap.open .chat-box { transform: none; }
+  .chat-fab { bottom: 20px; right: 20px; width: 54px; height: 54px; font-size: 22px; }
+  .chat-input { font-size: 16px; }
+  .chat-chips { padding: 8px 12px; gap: 6px; }
+  .chip { font-size: 11.5px; padding: 5px 12px; }
+}
+@supports (height: 100dvh) {
+  @media (max-width: 767px) {
+    .chat-box { height: 100dvh; }
+  }
+}
+/* ── Scroll-to-bottom button ── */
+.chat-scroll-btn {
+  position: absolute; bottom: 20px; right: 16px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #E87C25; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: #fff;
+  box-shadow: 0 4px 16px rgba(232,124,37,0.5);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+  animation: scrollBtnBounce 1.5s ease-in-out infinite;
+  z-index: 10;
+}
+.chat-scroll-btn.visible { opacity: 1; pointer-events: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-box, .chat-backdrop, #chat-modal-wrap,
+  .chat-msg, .typing-indicator span,
+  .chat-welcome-avatar, .chat-welcome h3, .chat-welcome p,
+  .chat-welcome::before, .chat-welcome::after,
+  .chat-avatar-wrap, .status-dot, .status-dot::after,
+  .chip, .chat-scroll-btn, .chat-fab {
+    animation: none !important; transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════
+   10–11. ПРИМЕР РАССЫЛКИ
+══════════════════════════════════════*/
+#mailing { background:var(--bg2); border-top:0.5px solid var(--border); }
+.mailing-tabs { display:flex; gap:0; background:var(--surface); border:0.5px solid var(--border); border-radius:12px; padding:4px; margin-bottom:40px; width:fit-content; }
+.mtab { padding:8px 24px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.2s; color:var(--muted); }
+.mtab.active { background:var(--accent2); color:#fff; }
+.mailing-pair { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:8px; }
+.mailing-laptop { display:flex; flex-direction:column; gap:8px; align-items: center; }
+.mailing-label { font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); text-align:center; }
+.mail-laptop { background:linear-gradient(180deg,#222,#1a1a1a); border-radius:12px 12px 0 0; padding:8px; box-shadow:0 20px 40px rgba(0,0,0,0.5); }
+.mail-screen { background:#1e1e2e; border-radius:6px; overflow:hidden; border:0.5px solid rgba(255,255,255,0.05); }
+.mail-chrome { background:#2d2d3d; padding:6px 10px; display:flex; align-items:center; gap:6px; }
+.mail-dots { display:flex; gap:4px; }
+.mail-dot { width:8px; height:8px; border-radius:50%; }
+.mail-url { flex:1; background:rgba(255,255,255,0.08); border-radius:4px; height:14px; margin:0 8px; }
+.mail-app { background:#fff; padding:0; }
+.mail-sidebar { background:#f5f5f8; width:100%; }
+/* Mail content before */
+.mail-before { padding:10px; font-size:7px; color:#333; }
+.mail-before-header { font-size:7px; font-weight:700; color:#003087; margin-bottom:4px; }
+.mail-before-from { font-size:6px; color:#888; margin-bottom:8px; }
+.mail-before-body { font-size:6px; color:#444; line-height:1.5; }
+.mail-before-link { color:#003087; text-decoration:underline; }
+/* Mail content after */
+.mail-after { padding:0; }
+.mail-after-banner { background:linear-gradient(135deg,#2c2118,#3d2e1e); padding:10px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.mail-after-griffon { width:40px; height:40px; background:radial-gradient(circle,rgba(196,98,45,0.4),rgba(196,98,45,0.1)); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; }
+.mail-after-title { font-size:9px; font-weight:700; color:#e07a3f; }
+.mail-after-body { font-size:6px; color:rgba(255,255,255,0.7); text-align:center; line-height:1.4; }
+.mail-after-btn { background:#e07a3f; color:#fff; font-size:7px; font-weight:700; padding:4px 12px; border-radius:4px; letter-spacing:0.5px; }
+.mail-after-footer { padding:8px; display:flex; align-items:center; justify-content:center; gap:8px; }
+.mail-vk { background:#0077ff; color:#fff; width:14px; height:14px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:700; }
+.mail-tg { background:#0088cc; color:#fff; width:14px; height:14px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:700; }
+.mail-laptop-base { background:linear-gradient(180deg,#282828,#1a1a1a); border-radius:0 0 8px 8px; height:10px; }
+
+/* ═══════════════════════════════════════
+   12. TELEGRAM / ПРИМЕРЫ
+══════════════════════════════════════*/
+#telegram { background:var(--bg3); border-top:0.5px solid var(--border); }
+.tg-wrap { display:flex; gap:48px; align-items:center; justify-content:center; margin-top:40px; }
+.phone-mockup { display:flex; flex-direction:column; align-items:center; gap:0; }
+.phone-shell {
+  width:200px; background:linear-gradient(180deg,#2a2a2a,#1a1a1a); border-radius:32px;
+  padding:8px; box-shadow:0 32px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07);
+  position:relative;
+}
+.phone-notch { width:60px; height:20px; background:#1a1a1a; border-radius:0 0 12px 12px; margin:0 auto 4px; display:flex; align-items:center; justify-content:center; }
+.phone-cam { width:8px; height:8px; border-radius:50%; background:#111; border:1px solid #333; }
+.phone-screen { background:#1a1a2e; border-radius:22px; overflow:hidden; }
+/* TG UI */
+.tg-topbar { background:#1a1a2e; border-bottom:1px solid rgba(255,255,255,0.06); padding:6px 8px; display:flex; align-items:center; gap:6px; }
+.tg-back { color:#5ab0ee; font-size:10px; }
+.tg-channel-ava { width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#003087,#1a4a9e); display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; color:#fff; }
+.tg-channel-info { flex:1; }
+.tg-channel-name { font-size:8px; font-weight:600; color:#fff; }
+.tg-channel-subs { font-size:6px; color:#8a8a9a; }
+.tg-status-bar { background:#1a1a2e; padding:2px 8px; display:flex; justify-content:space-between; font-size:6px; color:#ccc; }
+.tg-messages { background:#0d0d1a; padding:8px; display:flex; flex-direction:column; gap:6px; min-height:240px; overflow:hidden; }
+.tg-msg-card { background:linear-gradient(135deg,#2c1a0e,#3d2e1e); border-radius:8px; padding:8px; }
+.tg-msg-header { display:flex; align-items:center; gap:5px; margin-bottom:5px; }
+.tg-msg-avatar { width:18px; height:18px; border-radius:50%; background:radial-gradient(circle,rgba(224,122,63,0.6),rgba(196,98,45,0.3)); display:flex; align-items:center; justify-content:center; font-size:8px; }
+.tg-msg-name { font-size:7px; font-weight:700; color:#e07a3f; }
+.tg-msg-text { font-size:6.5px; color:rgba(255,255,255,0.8); line-height:1.5; }
+.tg-msg-text strong { color:#e07a3f; }
+.tg-attention { background:#c0392b; color:#fff; font-size:7px; font-weight:700; padding:3px 8px; border-radius:4px; text-align:center; margin-bottom:4px; }
+.tg-msg-date { font-size:5.5px; color:#666; text-align:right; margin-top:3px; }
+.phone-label { font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-top:12px; }
+.tg-vs { font-size:24px; font-weight:700; color:var(--muted2); align-self:center; }
+/* Before phone (boring) */
+.phone-before .tg-messages { background:#1a1a1a; }
+.boring-msg { background:rgba(255,255,255,0.05); border-radius:6px; padding:6px; }
+.boring-header { font-size:6px; font-weight:700; color:#aaa; margin-bottom:4px; }
+.boring-text { font-size:6px; color:#888; line-height:1.5; }
+.boring-link { color:#5ab0ee; text-decoration:underline; }
+
+/* ═══════════════════════════════════════
+   13. МЕРЧ
+══════════════════════════════════════*/
+#merch { background:var(--bg2); border-top:0.5px solid var(--border); }
+.merch-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; margin-top:40px; }
+.merch-card {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:20px;
+  overflow:hidden; position:relative; cursor:pointer;
+  transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.28s;
+}
+.merch-card:hover { transform:translateY(-6px) scale(1.01); border-color:rgba(224,122,63,0.35); box-shadow:0 24px 48px rgba(196,98,45,0.14); }
+.merch-img {
+  width:100%; aspect-ratio:16/9;
+  background:linear-gradient(135deg,rgba(196,98,45,0.08),rgba(196,98,45,0.03));
+  display:flex; align-items:center; justify-content:center; position:relative;
+}
+.merch-emoji { font-size:56px; filter:drop-shadow(0 4px 16px rgba(196,98,45,0.3)); }
+.merch-badge { position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.5); border:0.5px solid var(--border); border-radius:8px; padding:4px 10px; font-size:10px; font-weight:600; backdrop-filter:blur(8px); }
+.merch-body { padding:16px 20px; }
+.merch-name { font-size:15px; font-weight:600; letter-spacing:-0.3px; margin-bottom:4px; }
+.merch-desc { font-size:12px; color:var(--muted); line-height:1.5; }
+
+/* ═══════════════════════════════════════
+   14. СЦЕНЫ
+══════════════════════════════════════*/
+#scenes { background:var(--bg3); border-top:0.5px solid var(--border); }
+.scenes-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:40px; }
+.scene-card {
+  background:var(--surface); border:0.5px solid var(--border); border-radius:20px;
+  overflow:hidden; cursor:pointer; position:relative;
+  transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.28s;
+}
+.scene-card:hover { transform:translateY(-8px) scale(1.02); border-color:rgba(224,122,63,0.35); box-shadow:0 24px 48px rgba(196,98,45,0.15); }
+.scene-img {
+  width:100%; aspect-ratio:9/16;
+  background:linear-gradient(160deg,rgba(0,48,135,0.1),rgba(196,98,45,0.06));
+  display:flex; align-items:center; justify-content:center;
+}
+.scene-icon { font-size:48px; filter:drop-shadow(0 4px 12px rgba(196,98,45,0.2)); }
+.scene-footer { padding:14px 16px; }
+.scene-title { font-size:13px; font-weight:600; letter-spacing:-0.2px; margin-bottom:3px; }
+.scene-desc { font-size:11px; color:var(--muted); line-height:1.4; }
+
+/* ═══════════════════════════════════════
+   15. СПАСИБО
+══════════════════════════════════════*/
+#thanks { background:var(--bg); border-top:0.5px solid var(--border); min-height:100vh; }
+#thanks-canvas { position:absolute; inset:0; pointer-events:none; z-index:0; }
+.thanks-inner { text-align:center; position:relative; z-index:1; max-width:800px; margin:0 auto; }
+.thanks-title {
+  font-size:clamp(48px,9vw,96px); font-weight:800; letter-spacing:-3px; line-height:1;
+  margin-bottom:16px;
+  background:linear-gradient(135deg,#fff 20%,var(--accent2) 55%,#fff 85%);
+  background-size: 220% 220%;
+  animation: gradientShift 8s ease-in-out infinite;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.thanks-sub { font-size:16px; color:var(--muted); margin-bottom:48px; letter-spacing:-0.1px; }
+.thanks-griffon {
+  width:500px; margin:0 auto 10px;
+  filter:drop-shadow(0 24px 48px rgba(196,98,45,0.22));
+  animation:heroFloat 5s ease-in-out infinite;
+}
+.cta-btn {
+  display:inline-flex; align-items:center; gap:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff; font-size:16px; font-weight:600; letter-spacing:-0.3px;
+  padding:16px 32px; border-radius:100px; cursor:pointer; border:none;
+  box-shadow:0 16px 40px rgba(196,98,45,0.35);
+  transition:all 0.2s; text-decoration:none;
+}
+.cta-btn:hover { transform:translateY(-3px) scale(1.02); box-shadow:0 24px 56px rgba(196,98,45,0.45); }
+.cta-btn svg { width:20px; height:20px; }
+.thanks-stats { display:flex; gap:32px; justify-content:center; margin-top:48px; flex-wrap:wrap; }
+.t-stat { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.t-stat-n { font-size:40px; font-weight:800; letter-spacing:-2px; color:var(--accent2); line-height:1; }
+.t-stat-l { font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); }
+.back-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  color:var(--muted); font-size:12px; font-weight:400; letter-spacing:-0.1px;
+  margin-top:24px; cursor:pointer; text-decoration:none; transition:color 0.2s;
+}
+.back-btn:hover { color:var(--white); }
+
+/* ─── FOOTER ─── */
+footer {
+  background:var(--bg3); border-top:0.5px solid var(--border);
+  padding:56px 48px 32px;
+}
+.footer-inner { max-width:1160px; margin:0 auto; display:grid; grid-template-columns:1.5fr 1.5fr 1fr; gap:48px; }
+.footer-brand { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.footer-brand-badge { background:var(--navy); color:#fff; font-size:10px; font-weight:700; letter-spacing:0.5px; padding:5px 9px; border-radius:6px; }
+.footer-brand-name { font-size:15px; font-weight:600; letter-spacing:-0.2px; color:var(--white); }
+.footer-desc { font-size:12px; color:var(--muted); line-height:1.6; max-width:280px; margin-bottom:0; }
+.footer-col-title { font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); margin-bottom:16px; }
+.team-list { display:flex; flex-direction:column; gap:12px; }
+.team-member { display:flex; align-items:center; gap:10px; }
+.team-avatar { width:32px; height:32px; border-radius:50%; border:0.5px solid var(--border); background:rgba(196,98,45,0.1); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--accent2); flex-shrink:0; }
+.team-name { font-size:12px; font-weight:500; color:var(--white); letter-spacing:-0.1px; }
+.team-role { font-size:10px; color:var(--muted); }
+.contact-list { display:flex; flex-direction:column; gap:10px; }
+.contact-item { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+.contact-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.contact-link { color:var(--muted); text-decoration:none; transition:color 0.2s; }
+.contact-link:hover { color:var(--accent2); }
+.footer-cta {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(196,98,45,0.12); border:0.5px solid rgba(224,122,63,0.3);
+  color:var(--accent2); font-size:12px; font-weight:500; padding:10px 18px;
+  border-radius:100px; cursor:pointer; margin-top:16px; text-decoration:none;
+  transition:all 0.2s;
+}
+.footer-cta:hover { background:rgba(196,98,45,0.22); }
+.footer-bottom { max-width:1160px; margin:40px auto 0; padding-top:20px; border-top:0.5px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.footer-copy { font-size:11px; color:var(--muted2); }
+.footer-made { font-size:11px; color:var(--muted2); }
+.footer-made span { color:var(--accent2); }
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:1024px){
+  nav { padding:0 24px; }
+  .nav-links { display:none; }
+  section { padding:88px 24px 64px; }
+  .hero-inner, .intro-grid, .usage-wrap { grid-template-columns:1fr; }
+  .hero-right { display:none; }
+  .hero-2026 { display:none; }
+  .outfit-grid, .emotion-grid { grid-template-columns:repeat(2,1fr); }
+  .scenes-grid { grid-template-columns:repeat(2,1fr); }
+  .creation-grid { grid-template-columns:1fr; }
+  .mailing-pair { grid-template-columns:1fr; }
+  .tg-wrap { flex-direction:column; }
+  .merch-grid { grid-template-columns:1fr; }
+  .footer-inner { grid-template-columns:1fr; gap:32px; }
+  .footer-bottom { flex-direction:column; gap:8px; text-align:center; }
+  .year-badge { display:none; }
+}
+@media(max-width:600px){
+  .outfit-grid, .emotion-grid, .scenes-grid { grid-template-columns:1fr; }
+  .laptop { width:100%; }
+  .laptop-base { width:calc(100% + 20px); }
+}
+</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.6.9/umd/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="curR"></div>
+
+<nav id="main-nav">
+  <a class="nav-brand" href="#hero">
+    <img src="griffon photo 2/РТУ_МИРЭА logo.png" alt="РТУ МИРЭА" style="height:28px;object-fit:contain;vertical-align:middle;">
+    <span class="nav-logo-text">ГРИ<span>ФОН</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#hero">Главная</a></li>
+    <li><a href="#intro">Знакомство</a></li>
+    <li><a href="#creation">Процесс</a></li>
+    <li><a href="#outfits">Образы</a></li>
+    <li><a href="#emotions">Эмоции</a></li>
+    <li><a href="#usage">Применение</a></li>
+    <li><a href="#website">На сайте</a></li>
+    <li><a href="#mailing">Рассылки</a></li>
+    <li><a href="#telegram">Соц-сети</a></li>
+    <li><a href="#merch">Мерч</a></li>
+    <li><a href="#scenes">Сцены</a></li>
+    <li><a href="#thanks">Спасибо</a></li>
+  </ul>
+  <span style="font-size:11px;font-weight:500;letter-spacing:1px;color:var(--muted);flex-shrink:0;">2026</span>
+</nav>
+<section id="hero">
+  <spline-viewer loading-anim-type="spinner-small-dark" url="https://prod.spline.design/sGvpPOOwYPgiquWd/scene.splinecode" hide-ui="true"></spline-viewer>
+  <canvas id="hero-canvas" width="3000" height="200"></canvas>
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="reveal">
+        <div class="hero-badge">
+          <div class="hero-dot"></div>
+          Новый талисман РТУ МИРЭА
+        </div>
+      </div>
+      <div class="reveal d1">
+        <h1 class="hero-title">ГРИФОН</h1>
+      </div>
+      <div class="reveal d2">
+        <p class="hero-tagline">Официальный 3D-маскот и ИИ-ассистент<br>Российского технологического университета МИРЭА.</p>
+      </div>
+      <div class="hero-meta reveal d3">
+        <div class="meta-item">
+          <span class="meta-lbl">Автор</span>
+          <span class="meta-val">Луганский</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-lbl">Группа</span>
+          <span class="meta-val">ТХБО-01-24</span>
+        </div>
+        
+        <div class="meta-item">
+          <span class="meta-lbl">Год</span>
+          <span class="meta-val">2026</span>
+        </div>
+      
+      </div>
+      <div class="reveal d4" style="margin-top:256px;">
+        <div class="hero-brand">
+          <span class="brand-art"><img src="griffon photo 2/креативартор x rtu mirea logo.png" alt="КреативАРТор" style="height:64px;object-fit:contain;vertical-align:middle;"></span>
+        </div>
+      </div>
+    </div>
+   
+
+ 
+</section>
+ <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    Скролл
+  </div>
+
+<div class="marquee-strip">
+  <div class="marquee-track">
+    <span class="marquee-item">ГРИФОН</span>
+    <span class="marquee-item">РТУ МИРЭА</span>
+    <span class="marquee-item">ИИ-Ассистент</span>
+    <span class="marquee-item">3D-Маскот</span>
+    <span class="marquee-item">ТХБО-01-24</span>
+    <span class="marquee-item">Талисман</span>
+    <span class="marquee-item">Образование</span>
+    <span class="marquee-item">Инновации</span>
+    <span class="marquee-item">2026</span>
+    <span class="marquee-item">GRIFFON</span>
+    <span class="marquee-item">РТУ МИРЭА</span>
+    <span class="marquee-item">ИИ-Ассистент</span>
+    <span class="marquee-item">3D-Маскот</span>
+    <span class="marquee-item">ТХБО-01-24</span>
+    <span class="marquee-item">Талисман</span>
+    <span class="marquee-item">Образование</span>
+    <span class="marquee-item">Инновации</span>
+    <span class="marquee-item">2026</span>
+    <span class="marquee-item">GRIFFON</span>
+  </div>
+</div>
+
+<section id="intro">
+  
+  <div class="container">
+    <div class="intro-grid">
+      <div>
+        <div class="reveal"><div class="label">01 — Знакомство</div></div>
+        <div class="reveal d1">
+          <div class="profile-card">
+            <div class="profile-name">ГРИФОН</div>
+            <div class="profile-age"><span id="age-count">0</span> лет · Официальный маскот</div>
+            <div class="profile-divider"></div>
+            <div class="prow">
+              <div class="prow-label">Образование</div>
+              <div class="tags">
+                <span class="tag blue">РТУ МИРЭА</span>
+              </div>
+            </div>
+            <div class="profile-divider"></div>
+            <div class="prow">
+              <div class="prow-label">Развлечения</div>
+              <div class="tags">
+                <span class="tag">Мероприятия</span>
+                <span class="tag">Спорт</span>
+                <span class="tag">Искусственный интеллект</span>
+              </div>
+            </div>
+            <div class="profile-divider"></div>
+            <div class="prow">
+              <div class="prow-label">Характер</div>
+              <div class="tags">
+                <span class="tag">Весёлый</span>
+                <span class="tag">Добрый</span>
+                <span class="tag">Спокойный</span>
+                <span class="tag">Интересный</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+      <div class="intro-griffon reveal d2">
+        <div class="usage-griffon reveal">
+        <video class="usage-griffon-img" autoplay loop muted playsinline webkit-playsinline x5-playsinline style="width:100%;filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));animation:heroFloat 5s ease-in-out infinite;background:transparent;">
+          <source src="griffon photo 2/02-best.mov" type="video/mp4; codecs=hvc1">
+          <source src="griffon photo 2/02-best.webm" type="video/webm; codecs=vp09.00.41.08">
+        </video>
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="creation">
+  
+  <div class="container">
+    <div class="reveal"><div class="label">02 — Процесс создания</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Процесс создания</h2></div>
+    <div class="creation-grid">
+      <div class="moodboard reveal d1">
+        <div class="moodboard-label">Референсы</div>
+        <img src="griffon photo 2/03 ref.png" alt="Референсы" style="width:100%;flex:1;min-height:200px;object-fit:cover;border-radius:8px;margin-top:8px;"></div>
+      
+      <div class="carousel-wrap reveal d2">
+        <div class="carousel-box" id="carousel">
+          <div class="carousel-slides" id="carousel-slides">
+            <div class="carousel-slide" style="grid-template-columns:1fr">
+              <div class="view-cell">
+                <img src="griffon photo 2/03 griffon all.png" alt="3D модель" style="width:100%;height:100%;object-fit:contain;padding:8px;">
+                <span class="view-lbl">3D — все виды</span>
+              </div>
+            </div>
+          </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="carousel-hint">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
+            Кликни и переключай вид
+          </div>
+          <div class="carousel-dots" id="carousel-dots"><div class="cdot active" data-i="0"></div></div>
+        </div>
+      </div>
+      <div class="palette-col reveal d3">
+        <div class="wireframe-box" style="flex:1;min-height:320px;">
+          <div class="wireframe-label" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Геометрия / Сетка — 3D модель</span>
+            <span style="font-size:9px;color:var(--muted2);letter-spacing:0.5px;">🖱 Зажми и крути</span>
+          </div>
+          <div id="viewer3d" style="width:100%;height:100%;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#1a0f08,#0d0805);cursor:grab;position:relative;">
+            <div id="viewer3d-loading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted2);font-size:11px;">
+              <div style="width:24px;height:24px;border:2px solid var(--accent2);border-top-color:transparent;border-radius:50%;animation:spin3d 0.8s linear infinite;"></div>
+              <span>Загрузка 3D модели...</span>
+            </div>
+          </div>
+          <style>@keyframes spin3d{to{transform:rotate(360deg)}}</style>
+        </div>
+        </div>
+      </div>
+    <div class="palette-box">
+          <div class="palette-label">Цветовая палитра</div>
+          <div class="palette-row">
+            <div class="swatch" style="background:#8B4513"><span class="swatch-hex" style="color:#fff">#8B4513</span></div>
+            <div class="swatch" style="background:#F5F0E8"><span class="swatch-hex" style="color:#333">#F5F0E8</span></div>
+            <div class="swatch" style="background:#1E2A4A"><span class="swatch-hex" style="color:#fff">#1E2A4A</span></div>
+            <div class="swatch" style="background:#CD853F"><span class="swatch-hex" style="color:#fff">#CD853F</span></div>
+            <div class="swatch" style="background:#F5DEB3"><span class="swatch-hex" style="color:#333">#F5DEB3</span></div>
+          </div>
+          <div class="palette-row">
+            <div class="swatch" style="background:#6B3410"><span class="swatch-hex" style="color:#fff">#6B3410</span></div>
+            <div class="swatch" style="background:#8B6914"><span class="swatch-hex" style="color:#fff">#8B6914</span></div>
+            <div class="swatch" style="background:#3d2e1e"><span class="swatch-hex" style="color:#fff">#3D2E1E</span></div>
+            <div class="swatch" style="background:#E07A3F"><span class="swatch-hex" style="color:#fff">#E07A3F</span></div>
+            <div class="swatch" style="background:#D4963A"><span class="swatch-hex" style="color:#fff">#D4963A</span></div>
+          </div>
+        </div>
+    </div>
+    
+  </div>
+</section>
+
+<section id="outfits">
+  
+  <div class="container">
+    <div class="reveal"><div class="label">03 — Образы</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Разные образы</h2></div>
+    <div class="reveal d2"><p class="s-body">Грифон адаптируется к любому контексту жизни университета.</p></div>
+    <div class="outfit-grid">
+      <div class="outfit-card reveal d1">
+        <div class="outfit-img">
+          <img src="griffon photo 2/04 Повседневный.png" alt="Повседневный" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="outfit-footer">
+          <div class="outfit-name">Повседневный</div>
+          <div class="outfit-desc">Мерч РТУ МИРЭА · каждый день</div>
+        </div>
+      </div>
+      <div class="outfit-card reveal d2">
+        <div class="outfit-img">
+          <img src="griffon photo 2/04 Официальный.png" alt="Официальный" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="outfit-footer">
+          <div class="outfit-name">Официальный</div>
+          <div class="outfit-desc">Деловой костюм · конференции</div>
+        </div>
+      </div>
+      <div class="outfit-card reveal d3">
+        <div class="outfit-img">
+          <img src="griffon photo 2/04 Научный.png" alt="Научный" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="outfit-footer">
+          <div class="outfit-name">Научный</div>
+          <div class="outfit-desc">Белый халат · лаборатория</div>
+        </div>
+      </div>
+      <div class="outfit-card reveal d4">
+        <div class="outfit-img">
+          <img src="griffon photo 2/04 Спортивный.png" alt="Спортивный" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="outfit-footer">
+          <div class="outfit-name">Спортивный</div>
+          <div class="outfit-desc">Форма РТУ МИРЭА · баскетбольная</div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<section id="emotions">
+  
+  <div class="container">
+    <div class="reveal"><div class="label">04 — Эмоции</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Разные эмоции</h2></div>
+    <div class="reveal d2"><p class="s-body">Грифон живой — он радуется вашим успехам, думает вместе с вами, смеётся и сочувствует.</p></div>
+    <div class="emotion-grid">
+      <div class="emotion-card reveal d1">
+        <div class="emotion-img">
+          <img src="griffon photo 2/05 радуется.png" alt="Радуется" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="emotion-footer">
+          <div class="emotion-name">Радуется</div>
+        </div>
+      </div>
+      <div class="emotion-card reveal d2">
+        <div class="emotion-img">
+          <img src="griffon photo 2/05 Думает.png" alt="Думает" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="emotion-footer">
+          <div class="emotion-name">Думает</div>
+        </div>
+      </div>
+      <div class="emotion-card reveal d3">
+        <div class="emotion-img">
+          <img src="griffon photo 2/05 Не знает.png" alt="Не знает" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="emotion-footer">
+          <div class="emotion-name">Не знает</div>
+        </div>
+      </div>
+      <div class="emotion-card reveal d4">
+        <div class="emotion-img">
+          <img src="griffon photo 2/05 Смеется.png" alt="Смеётся" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        </div>
+        <div class="emotion-footer">
+          <div class="emotion-name">Смеётся</div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<section id="usage">
+  
+  <div class="container">
+    <div class="usage-wrap">
+      <div class="usage-griffon reveal">
+        <video class="usage-griffon-img" autoplay loop muted playsinline webkit-playsinline x5-playsinline style="width:150%;filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));animation:heroFloat 5s ease-in-out infinite;background:transparent;">
+          <source src="griffon photo 2/06-best.mov" type="video/mp4; codecs=hvc1">
+          <source src="griffon photo 2/06-best.webm" type="video/webm; codecs=vp09.00.41.08">
+        </video>
+      </div>
+      <div>
+        <div class="reveal"><div class="label">05 — Применение</div></div>
+        <div class="reveal d1"><h2 class="s-h2">Где можно<br>использовать?</h2></div>
+        <div class="usage-list">
+          <div class="usage-item reveal d1">
+            <div class="usage-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h4M9 15h3"/></svg>
+            </div>
+            <div>
+              <div class="usage-title">Сайт МИРЭА — ИИ-ассистент</div>
+              <div class="usage-desc">Грифон как интерактивный помощник: отвечает на вопросы студентов и абитуриентов в режиме реального времени.</div>
+            </div>
+          </div>
+          <div class="usage-item reveal d2">
+            <div class="usage-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div>
+              <div class="usage-title">Email-рассылки</div>
+              <div class="usage-desc">Делает университетские письма живыми и брендированными — открываемость растёт в разы.</div>
+            </div>
+          </div>
+          <div class="usage-item reveal d3">
+            <div class="usage-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" troke-linejoin="round"xmlns="http://www.w3.org/2000/svg"> <polygon points="22,2 2,9 11,13 15,22" /><line x1="22" y1="2" x2="11" y2="13" /></svg>
+            </div>
+            <div>
+              <div class="usage-title">В соц-сетях</div>
+              <div class="usage-desc">Официальный маскот социальных сетей. Повышает узнаваемость бренда среди студентов.</div>
+            </div>
+          </div>
+          <div class="usage-item reveal d4">
+            <div class="usage-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            </div>
+            <div>
+              <div class="usage-title">Мерч и сувениры</div>
+              <div class="usage-desc">Плюшевые игрушки, пины, стикеры, USB-флешки и другая продукция с символикой университета.</div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="website">
+  
+  <div class="container">
+    <div class="reveal"><div class="label">06 — Пример на сайте</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Пример на сайте РТУ МИРЭА</h2></div>
+    <div class="reveal d2"><p class="s-body">Грифон встраивается как умный виджет прямо на сайт mirea.ru — видит контекст страницы и помогает каждому посетителю.</p></div>
+    <img src="griffon photo 2/07.png" alt="До" style="width:100%;border-radius:16px;margin-bottom:24px;">
+    <div style="text-align:center;">
+      <button class="site-open-btn" onclick="openChat()">
+        💬 Открыть чат с Грифоном
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Floating Chat Button -->
+<button class="chat-fab" onclick="openChat()" aria-label="Открыть чат с Грифоном">
+  <img src="griffon photo 2/ava.png" alt="Грифон" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;">
+  <span class="chat-fab-tooltip">Спросить Грифона</span>
+</button>
+
+<!-- Backdrop -->
+<div class="chat-backdrop" id="chat-backdrop" onclick="closeChat()"></div>
+
+<!-- Chat Modal -->
+<div id="chat-modal-wrap" role="dialog" aria-modal="true" aria-label="Чат с Грифоном — ИИ-ассистент РТУ МИРЭА">
+  <div class="chat-box" id="chat-box">
+
+    <header class="chat-header">
+      <div class="chat-avatar-wrap">
+        <img src="griffon photo 2/ava.png" alt="Грифон" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+      </div>
+      <div class="chat-title-wrap">
+        <div class="chat-title">Грифон — ИИ-ассистент РТУ МИРЭА</div>
+        <div class="chat-subtitle" id="chat-status-text"><span class="blink-dot">●</span> Онлайн · Готов помочь</div>
+      </div>
+      <div class="chat-header-btns">
+        <button class="ch-icon-btn" onclick="toggleChatTheme()" title="Сменить тему" aria-label="Переключить тему">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button class="ch-icon-btn" onclick="clearChat()" title="Очистить историю" aria-label="Очистить чат">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        </button>
+        <button class="ch-icon-btn ch-close-btn" onclick="closeChat()" title="Закрыть" aria-label="Закрыть чат">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    <button class="chat-scroll-btn" id="chat-scroll-btn" onclick="scrollToBottom()" aria-label="Прокрутить вниз">↓</button>
+    <main class="chat-messages" id="chat-msgs" role="log" aria-live="polite" aria-label="История переписки" style="flex:1;overflow-y:auto;">
+      <div class="chat-welcome" id="chat-welcome">
+        <div class="chat-welcome-avatar"><img src="griffon photo 2/ava.png" alt="Грифон" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>
+        <h3>Привет! Я Грифон</h3>
+        <p>Официальный ИИ-ассистент РТУ МИРЭА. Помогу узнать всё о поступлении, учёбе и жизни в университете.</p>
+      </div>
+    </main>
+    </div>
+
+    <div class="chat-chips" id="chat-chips">
+      <button class="chip" onclick="quickSend('Как поступить в РТУ МИРЭА в 2026?')">Как поступить?</button>
+      <button class="chip" onclick="quickSend('Проходные баллы 2026')">Проходные баллы 2026</button>
+      <button class="chip" onclick="quickSend('Какие направления есть в МИРЭА?')">Направления</button>
+      <button class="chip" onclick="quickSend('Есть ли общежитие в МИРЭА?')">Общежития</button>
+      <button class="chip" onclick="quickSend('Когда день открытых дверей в МИРЭА?')">Дни открытых дверей</button>
+      <button class="chip" onclick="quickSend('Стипендии и льготы в МИРЭА')">Стипендии и льготы</button>
+    </div>
+
+    <footer class="chat-input-area">
+      <div class="chat-input-row" id="chat-input-row">
+        <textarea class="chat-input" id="chat-input" rows="1"
+          placeholder="Спросите что-нибудь о МИРЭА…"
+          aria-label="Сообщение Грифону"
+          onkeydown="chatKeydown(event)" oninput="chatInputChange(this)"></textarea>
+        <button class="chat-send-btn" id="chat-send-btn" onclick="sendMsg()" aria-label="Отправить" disabled>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </footer>
+
+  </div>
+</div>
+
+<section id="mailing">
+  
+  <div class="container">
+    <div class="reveal"><div class="label">07 — Рассылки</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Пример рассылки</h2></div>
+    <div class="reveal d2"><p class="s-body">Одно и то же письмо — совершенно разный результат. С Грифоном университетские рассылки становятся брендированными и запоминающимися.</p></div>
+    <div class="mailing-tabs reveal d2">
+      <div class="mtab active" onclick="switchMail(0,this)">Рассылка №1</div>
+      <div class="mtab" onclick="switchMail(1,this)">Рассылка №2</div>
+    </div>
+    <div id="mail-set-0" class="mailing-pair">
+      <div class="mailing-laptop reveal d2">
+        <div class="mailing-label">До — скучно</div>
+        <img src="griffon photo 2/10 1 до.png" alt="До" style="width:165%;">
+      </div>
+      <div class="mailing-laptop reveal d3">
+        <div class="mailing-label">После — с Грифоном</div>
+        <img src="griffon photo 2/10 1 после.png" alt="После" style="width:165%;">
+      </div>
+    </div>
+    <div id="mail-set-1" class="mailing-pair" style="display:none;">
+      <div class="mailing-laptop reveal d2">
+        <div class="mailing-label">До — скучно</div>
+        <img src="griffon photo 2/10 2 до.png" alt="До 2" style="width:165%;border-radius:12px;">
+      </div>
+      <div class="mailing-laptop reveal d3">
+        <div class="mailing-label">После — с Грифоном</div>
+        <img src="griffon photo 2/10 2 после.png" alt="После 2" style="width:165%;border-radius:12px;">
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<section id="telegram" style="padding:72px 24px 0 24px;min-height:auto;overflow:visible;">
+  
+  <div style="padding:96px 0px 0px 0px;">
+    <div class="reveal"><div class="label">08 — Соц-сети</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Пример в Соц-сетях</h2></div>
+    <div class="reveal d2"><p class="s-body">Официальный канал РТУ МИРЭА с Грифоном — уведомления и новости, которые хочется читать.</p></div>
+    <div class="tg-wrap" style="justify-content:center;">
+      <div style="max-width: 1300px;width: 100%;border-radius:24px;overflow:hidden;">
+        <img src="griffon photo 2/12.png" alt="Пример в Telegram" style="width:100%;display:block;">
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<section id="merch">
+  
+  <div class="container">
+    <div class="reveal"><div class="label">09 — Мерч</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Примеры мерча</h2></div>
+    <div class="reveal d2"><p class="s-body">Плюшевая игрушка, пины, USB-флешка, стикеры — Грифон становится частью студенческой жизни.</p></div>
+    <div class="merch-grid">
+      <div class="merch-card reveal d1">
+        <div class="merch-img">
+          <img src="griffon photo 2/13 плюшевая игрушка.png" alt="Плюшевая игрушка" style="width:100%;height:100%;object-fit:cover;">
+          <div class="merch-badge">Эксклюзив</div>
+        </div>
+        <div class="merch-body">
+          <div class="merch-name">Плюшевый Грифон на рюкзак</div>
+          <div class="merch-desc">Брелок-игрушка в фирменной куртке РТУ МИРЭА. Цепляется на любой рюкзак — моментально узнаваем.</div>
+        </div>
+      </div>
+      <div class="merch-card reveal d2">
+        <div class="merch-img">
+          <img src="griffon photo 2/13 пин.png" alt="Пины" style="width:100%;height:100%;object-fit:cover;">
+          <div class="merch-badge">2 вида</div>
+        </div>
+        <div class="merch-body">
+          <div class="merch-name">Пины и значки</div>
+          <div class="merch-desc">Металлические эмалированные пины с логотипом РТУ МИРЭА и Грифоном. Коллекционная серия.</div>
+        </div>
+      </div>
+      <div class="merch-card reveal d3">
+        <div class="merch-img">
+          <img src="griffon photo 2/13 флешка 1.png" alt="USB-флешка" style="width:100%;height:100%;object-fit:cover;">
+          <div class="merch-badge">USB 3.0</div>
+        </div>
+        <div class="merch-body">
+          <div class="merch-name">USB-флешка Грифон</div>
+          <div class="merch-desc">Фигурная флешка-брелок — Грифон в фирменной одежде. Практично и уникально.</div>
+        </div>
+      </div>
+      <div class="merch-card reveal d4">
+        <div class="merch-img">
+          <img src="griffon photo 2/13 стикеры.png" alt="Стикеры" style="width:100%;height:100%;object-fit:cover;">
+          <div class="merch-badge">6 стикеров</div>
+        </div>
+        <div class="merch-body">
+          <div class="merch-name">Стикеры на чехол</div>
+          <div class="merch-desc">Голографические виниловые стикеры с разными образами Грифона — подходят на любой чехол.</div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<section id="scenes">
+  
+  <div class="container">
+    <div class="reveal"><div class="label">10 — Сцены использования</div></div>
+    <div class="reveal d1"><h2 class="s-h2">Примеры использования</h2></div>
+    <div class="reveal d2"><p class="s-body">Грифон органично вписывается в любое событие жизни университета.</p></div>
+    <div class="scenes-grid">
+      <div class="scene-card reveal d1">
+        <div class="scene-img">
+          <img src="griffon photo 2/14 (3).png" alt="Конференция" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+        <div class="scene-footer">
+          <div class="scene-title">Конференция</div>
+          <div class="scene-desc">Официальный представитель на научных мероприятиях</div>
+        </div>
+      </div>
+      <div class="scene-card reveal d2">
+        <div class="scene-img">
+          <img src="griffon photo 2/14 (1).png" alt="Лаборатория" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+        <div class="scene-footer">
+          <div class="scene-title">Лаборатория</div>
+          <div class="scene-desc">Научный ассистент в мегалабораториях МИРЭА</div>
+        </div>
+      </div>
+      <div class="scene-card reveal d3">
+        <div class="scene-img">
+          <img src="griffon photo 2/14 (2).png" alt="Баскетбол" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+        <div class="scene-footer">
+          <div class="scene-title">Баскетбол</div>
+          <div class="scene-desc">Талисман спортивных команд РТУ МИРЭА</div>
+        </div>
+      </div>
+      <div class="scene-card reveal d4">
+        <div class="scene-img">
+          <img src="griffon photo 2/14 (4).png" alt="Аудитория" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+        <div class="scene-footer">
+          <div class="scene-title">Аудитория</div>
+          <div class="scene-desc">Помощник студентов в учебном процессе</div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<section id="thanks">
+  <canvas id="thanks-canvas" width="3000" height="200"></canvas>
+  <div class="container">
+    <div class="thanks-inner">
+      <div class="reveal">
+        <div class="label" style="justify-content:center;margin-bottom:16px;">Конец презентации</div>
+      </div>
+      <div class="reveal d1">
+        <img class="thanks-griffon" src="griffon photo 2/15 Спасибо за внимание.png">
+      </div>
+      <div class="reveal d2">
+        <h2 class="thanks-title">СПАСИБО<br>ЗА ВНИМАНИЕ</h2>
+        <p class="thanks-sub">Проект «Грифон» · РТУ МИРЭА · ТХБО-01-24 · 2026</p>
+      </div>
+      <div class="reveal d3">
+        <a class="back-btn" href="#hero">↑ Вернуться к началу</a>
+      </div>
+      <div class="thanks-stats reveal d4">
+        <div class="t-stat"><div class="t-stat-n">3D</div><div class="t-stat-l">моделей персонажа</div></div>
+        <div class="t-stat"><div class="t-stat-n">15+</div><div class="t-stat-l">вариантов образов</div></div>
+        <div class="t-stat"><div class="t-stat-n">∞</div><div class="t-stat-l">возможностей применения</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">
+        <img src="griffon photo 2/РТУ_МИРЭА logo.png" alt="РТУ МИРЭА" style="height:28px;object-fit:contain;">
+        <span class="footer-brand-name">ГРИФОН</span>
+      </div>
+      <p class="footer-desc">Проект «ГРИФОН» — талисман и ИИ-ассистент Российского технологического университета МИРЭА. Создан студентами группы ТХБО-01-24, 2026.</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Команда</div>
+      <div class="team-list">
+        <div class="team-member">
+          <div class="team-avatar">ЛО</div>
+          <div>
+            <div class="team-name">Луганский Олег</div>
+            <div class="team-role">Design & 3D & site & Ai</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Контакты</div>
+      <div class="contact-list">
+        <div class="contact-item">
+          <div class="contact-dot" style="background:#4caf50"></div>
+          <a class="contact-link" href="https://mirea.ru">mirea.ru</a>
+        </div>
+        <div class="contact-item">
+          <div class="contact-dot" style="background:var(--accent2)"></div>
+          <a class="contact-link" href="mailto:vorchizh2@mail.ru">vorchizh2@mail.ru</a>
+        </div>
+        <div class="contact-item">
+          <div class="contact-dot" style="background:#4c8baf"></div>
+          <a class="contact-link" href="https://t.me/Young_IL">Связаться в Telegram</a>
+        </div>
+        <div class="contact-item">
+          <div class="contact-dot" style="background:#888"></div>
+          <span>пр. Вернадского, 78, Москва</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 | ГРИФОН · РТУ МИРЭА · ТХБО-01-24</div>
+    <div class="footer-made">Создано с <span>♥</span> командой <img src="griffon photo 2/креативартор logo.png" alt="КреативАРТор" style="height:16px;object-fit:contain;vertical-align:middle;margin-left:4px;"></div>
+  </div>
+</footer>
+
+<script>
+/* ═══ CURSOR ═══ */
+const cur = document.getElementById('cur');
+const curR = document.getElementById('curR');
+let mx=0, my=0, rx=0, ry=0;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+  document.body.classList.add('cursor-ready');
+});
+(function animCursor(){
+  rx += (mx-rx)*0.13; ry += (my-ry)*0.13;
+  curR.style.left = rx + 'px'; curR.style.top = ry + 'px';
+  requestAnimationFrame(animCursor);
+})();
+document.querySelectorAll('a,button,.outfit-card,.emotion-card,.scene-card,.merch-card,.swatch,.cdot,.mtab').forEach(el => {
+  el.addEventListener('mouseenter', () => document.body.classList.add('hovered'));
+  el.addEventListener('mouseleave', () => document.body.classList.remove('hovered'));
+});
+
+/* reveal on scroll */
+(function initReveal() {
+  const revealEls = new Set(document.querySelectorAll('.reveal'));
+
+  document.querySelectorAll(
+    'section img, section h1, section h2, section p, section .profile-card, section .creation-grid > *, ' +
+    'section .usage-item, section .outfit-card, section .emotion-card, section .scene-card, section .merch-card, ' +
+    'section .mailing-tabs, section .palette-box, section .moodboard, section .wireframe-box, section .laptop-wrap, ' +
+    'section .tg-wrap, section .thanks-griffon, section .cta-btn, section .back-btn, section .footer-inner, section .footer-bottom'
+  ).forEach(el => revealEls.add(el));
+
+  revealEls.forEach(el => el.classList.add('reveal'));
+
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced || !('IntersectionObserver' in window)) {
+    revealEls.forEach(el => el.classList.add('in'));
+    return;
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+  revealEls.forEach(el => io.observe(el));
+
+  // Make the first hero elements visible almost immediately for a proper page-entry feel.
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelectorAll('#hero .reveal').forEach(el => el.classList.add('in'));
+    }, 120);
+  }, { once: true });
+})();
+
+/* ═══ NAV ACTIVE ═══ */
+const secs = document.querySelectorAll('section[id]');
+const navAs = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  let cur2 = '';
+  secs.forEach(s => { if(window.scrollY >= s.offsetTop - 80) cur2 = s.id; });
+  navAs.forEach(a => {
+    const active = a.getAttribute('href') === '#' + cur2;
+    a.classList.toggle('active', active);
+  });
+});
+
+/* ═══ PARTICLE CANVAS ═══ */
+function initCanvas(id, count) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+  resize();
+  window.addEventListener('resize', resize);
+  const pts = Array.from({length: count}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.5 + 0.3,
+    dx: (Math.random() - 0.5) * 0.3,
+    dy: (Math.random() - 0.5) * 0.3,
+    o: Math.random() * 0.4 + 0.05,
+    po: Math.random() * 0.4 + 0.05,
+    do2: (Math.random() - 0.5) * 0.003,
+  }));
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pts.forEach(p => {
+      p.x += p.dx; p.y += p.dy; p.o += p.do2;
+      if(p.x < 0 || p.x > canvas.width) p.dx *= -1;
+      if(p.y < 0 || p.y > canvas.height) p.dy *= -1;
+      if(p.o < 0.02 || p.o > 0.5) p.do2 *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(224,122,63,${p.o})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+initCanvas('hero-canvas', 300);
+initCanvas('thanks-canvas', 300);
+
+/* ═══ CAROUSEL ═══ */
+let cIdx = 0;
+const cSlides = document.getElementById('carousel-slides');
+const cDots = document.querySelectorAll('.cdot');
+function goSlide(i) {
+  cIdx = i;
+  if(cSlides) cSlides.style.transform = `translateX(-${i * 100}%)`;
+  cDots.forEach((d,j) => d.classList.toggle('active', j === i));
+}
+cDots.forEach(d => d.addEventListener('click', () => goSlide(+d.dataset.i)));
+
+/* ═══ CHAT ═══ */
+(function() {
+  const STORE_KEY = 'griffon_chat_v2';
+  const THEME_KEY = 'griffon_chat_theme';
+  let chatHistory = [];
+  let isBotTyping = false;
+
+  function loadHistory() {
+    try { const s = localStorage.getItem(STORE_KEY); if (s) chatHistory = JSON.parse(s); } catch(e) {}
+  }
+  function saveHistory() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(chatHistory)); } catch(e) {}
+  }
+  function formatTime(ts) {
+    const d = new Date(ts);
+    return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  }
+  function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function inlineMd(t) {
+    t = escHtml(t);
+    t = t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    t = t.replace(/\*(.+?)\*/g,'<em>$1</em>');
+    t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return t;
+  }
+  function renderMd(text) {
+    const lines = text.split('\n');
+    let html = ''; let inList = false;
+    for (const line of lines) {
+      if (line.startsWith('• ')) {
+        if (!inList) { html += '<ul>'; inList = true; }
+        html += `<li>${inlineMd(line.slice(2))}</li>`;
+      } else {
+        if (inList) { html += '</ul>'; inList = false; }
+        html += (line === '' ? '<br>' : inlineMd(line) + '<br>');
+      }
+    }
+    if (inList) html += '</ul>';
+    return html.replace(/<br>$/, '');
+  }
+  function buildMsg(role, text, ts) {
+    const isUser = role === 'user';
+    const bubble = isUser
+      ? `<div class="msg-bubble">${escHtml(text).replace(/\n/g,'<br>')}</div>`
+      : `<div class="msg-bubble">${renderMd(text)}</div>`;
+    const avatar = isUser ? '' : `<div class="msg-avatar"><img src="griffon photo 2/ava.png" alt="Грифон" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
+    const copy = isUser ? '' : `<button class="copy-btn" onclick="copyMsg(this)" title="Копировать">⎘</button>`;
+    const meta = `<div class="msg-meta"><span>${formatTime(ts)}</span>${copy}</div>`;
+    return `<div class="chat-msg ${isUser?'user':'bot'}">${avatar}<div class="msg-content">${bubble}${meta}</div></div>`;
+  }
+  function scrollBottom() {
+    const m = document.getElementById('chat-msgs');
+    if (m) m.scrollTop = m.scrollHeight;
+    updateScrollBtn();
+  }
+  function updateScrollBtn() {
+    const m = document.getElementById('chat-msgs');
+    const btn = document.getElementById('chat-scroll-btn');
+    if (!m || !btn) return;
+    const atBottom = m.scrollHeight - m.scrollTop - m.clientHeight < 60;
+    btn.classList.toggle('visible', !atBottom);
+  }
+  window.scrollToBottom = function() { scrollBottom(); };
+  // wire scroll listener after DOM ready (deferred)
+  document.addEventListener('DOMContentLoaded', () => {
+    const m = document.getElementById('chat-msgs');
+    if (m) m.addEventListener('scroll', updateScrollBtn, { passive: true });
+  });
+  function renderHistory() {
+    const msgs = document.getElementById('chat-msgs');
+    if (!msgs) return;
+    if (chatHistory.length === 0) {
+      if (!document.getElementById('chat-welcome')) {
+        msgs.innerHTML = '<div class="chat-welcome" id="chat-welcome"><div class="chat-welcome-avatar"><img src="griffon photo 2/ava.png" alt="Грифон" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div><h3>Привет! Я Грифон 👋</h3><p>Официальный ИИ-ассистент РТУ МИРЭА. Помогу узнать всё о поступлении, учёбе и жизни в университете.</p></div>';
+      }
+      return;
+    }
+    const w = document.getElementById('chat-welcome');
+    if (w) w.remove();
+    msgs.innerHTML = chatHistory.map(m => buildMsg(m.role, m.text, m.ts)).join('');
+    scrollBottom();
+  }
+  function addMsg(role, text) {
+    const ts = Date.now();
+    chatHistory.push({ role, text, ts });
+    saveHistory();
+    const w = document.getElementById('chat-welcome');
+    if (w) w.remove();
+    const msgs = document.getElementById('chat-msgs');
+    if (msgs) { msgs.insertAdjacentHTML('beforeend', buildMsg(role, text, ts)); scrollBottom(); }
+  }
+  function showTyping() {
+    const msgs = document.getElementById('chat-msgs');
+    if (!msgs) return;
+    const d = document.createElement('div');
+    d.className = 'chat-msg bot'; d.id = 'typing-msg';
+    d.innerHTML = '<div class="msg-avatar"><img src="griffon photo 2/ava.png" alt="Грифон" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div><div class="msg-content"><div class="msg-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div></div>';
+    msgs.appendChild(d); scrollBottom();
+  }
+  function hideTyping() { const t = document.getElementById('typing-msg'); if (t) t.remove(); }
+
+  const kb = [
+    { keys: ['поступить','поступление','подать','документы','абитуриент','поступ','как попасть'],
+      ans: 'Для поступления в РТУ МИРЭА:\n• Зарегистрируйтесь на Госуслугах и подайте заявление онлайн (или лично в приёмную комиссию)\n• Предоставьте результаты ЕГЭ — обычно 3 предмета\n• Следите за конкурсными списками на priemka.mirea.ru\n\nПодробная инструкция: [mirea.ru](https://mirea.ru) 😊' },
+    { keys: ['егэ','какие предметы','предмет','математик','физик','информатик','химия','биологи'],
+      ans: 'Набор ЕГЭ зависит от направления:\n• **IT и программирование**: Математика (профиль) + Информатика + Русский\n• **Радиоэлектроника, робототехника**: Математика + Физика + Русский\n• **Биотехнологии**: Математика + Химия/Биология + Русский\n• **Экономика**: Математика + Обществознание + Русский\n\nТочный список — [mirea.ru](https://mirea.ru) в разделе «Поступающим» 📚' },
+    { keys: ['направлени','специальност','факультет','институт','программ','кафедр','что изучают'],
+      ans: 'РТУ МИРЭА — один из крупнейших технических вузов России! **120+ направлений**:\n\n• 💻 **ИТ и ИИ**: программная инженерия, ИБ, машинное обучение\n• 🤖 **Робототехника** и мехатроника\n• 📡 **Радиоэлектроника** и телекоммуникации\n• 🔬 **Биотехнологии** и химия\n• 📊 **Экономика** и менеджмент\n• 🎮 **Дизайн** и медиа\n\nКакое направление вам интересно?' },
+    { keys: ['общежит','жильё','проживани','комнат','иногородн'],
+      ans: 'В РТУ МИРЭА несколько современных общежитий рядом с корпусами:\n\n• Предоставляются иногородним студентам на конкурсной основе\n• Стоимость: от **~1 500 руб./месяц**\n• Заявку подают в июле–августе после зачисления\n• На территории: столовая, спортзал, читальный зал\n\nПодробнее: [mirea.ru](https://mirea.ru) 🏠' },
+    { keys: ['стипенди','деньги','выплат','пособи','социальн','льгот'],
+      ans: 'Виды стипендий в МИРЭА:\n\n• **Академическая** — ~3 000 руб./мес\n• **Повышенная** — до 10 000–15 000 руб.\n• **Социальная** — для льготных категорий\n• **Именные** — за выдающиеся достижения\n\nТакже льготный проездной и скидки на питание. Точные суммы — [mirea.ru](https://mirea.ru) 💰' },
+    { keys: ['баллы','проходной','конкурс','шанс','поступлю','сколько баллов'],
+      ans: 'Проходные баллы **2025 года** (сумма за 3 ЕГЭ):\n\n• Программная инженерия: **250–265**\n• Информационная безопасность: **245–260**\n• Прикладная математика: **240–255**\n• Радиоэлектроника: **195–215**\n• Биотехнологии: **200–225**\n• Экономика: **220–240**\n\nАктуальные данные: [priemka.mirea.ru](https://mirea.ru) 📊' },
+    { keys: ['день открытых дверей','открытый день','открытые двери','экскурси','посетить'],
+      ans: 'Дни открытых дверей в РТУ МИРЭА проводятся несколько раз в год — обычно октябрь–ноябрь и февраль–март.\n\nПрограмма:\n• Презентация направлений подготовки\n• Экскурсия по кампусу\n• Встреча с преподавателями и студентами\n\nАнонсы: [mirea.ru](https://mirea.ru) 📅' },
+    { keys: ['кто ты','расскажи о себе','что умеешь','грифон','представься'],
+      ans: 'Я — **Грифон** 🦅, официальный ИИ-ассистент и талисман **РТУ МИРЭА**!\n\nПомогаю:\n• Узнать о поступлении и проходных баллах\n• Разобраться с направлениями\n• Найти инфо об общежитии, стипендиях, студенческой жизни\n\nСоздан студентом группы **ТХБО-01-24** в 2026 году 😊' },
+    { keys: ['расписание','занятия','пары','распис','сессия','экзамен'],
+      ans: 'Расписание — в личном кабинете студента:\n🔗 **[lk.mirea.ru](https://lk.mirea.ru)** — оценки, задолженности, новости\n\nЕсть мобильное приложение МИРЭА для iOS и Android 📅' },
+    { keys: ['практик','стажировк','работа','карьер','трудоустройств'],
+      ans: 'МИРЭА — партнёр ведущих IT-компаний:\n\n• **Сбер, Яндекс, ВКонтакте, Ростелеком**, Huawei\n• Центр карьеры помогает с трудоустройством\n• Оплачиваемые стажировки с 3–4 курса\n\nМИРЭА — топ-5 вузов по трудоустройству 💼' },
+    { keys: ['адрес','где находится','как добраться','метро','корпус','кампус'],
+      ans: 'Основные корпуса РТУ МИРЭА:\n\n• 🏛️ **Главный** — пр. Вернадского, 78 (м. «Юго-Западная»)\n• 🏢 **Проспект Мира** — пр. Мира, 78А (м. «Щербаковская»)\n• 🔬 **Стромынка** — ул. Стромынка, 20 (м. «Сокольники»)\n\nКарта: [mirea.ru](https://mirea.ru) 📍' },
+    { keys: ['бюджет','платно','стоимость','цена обучени','сколько стоит','контракт'],
+      ans: 'В МИРЭА есть **бюджетные** и **платные** места:\n\n• **Бюджет** — по результатам ЕГЭ\n• **Контракт** — от 150 000 до 350 000 руб./год\n• IT-специальности: **200 000–280 000 руб./год**\n• Есть возможность перевода на бюджет при отличной учёбе 💳' },
+    { keys: ['военн','армия','вуц','военная кафедра','отсрочк'],
+      ans: 'В РТУ МИРЭА есть **Военный учебный центр (ВУЦ)**:\n\n• Военная специальность параллельно с основной учёбой\n• После окончания — звание **лейтенанта запаса**\n• **Отсрочка** от призыва на всё время обучения\n• Занятия 1 день в неделю 🎖️' },
+    { keys: ['спорт','секци','клуб','футбол','баскетбол','волейбол'],
+      ans: 'Спортивная жизнь МИРЭА очень активная! 🏆\n\nСекции:\n• Баскетбол, волейбол, футбол, плавание\n• Борьба, бокс, единоборства\n• Шахматы, киберспорт, лёгкая атлетика\n\nМИРЭА участвует во Всероссийских студенческих играх 🏀' },
+  ];
+
+  function griffonAnswer(text) {
+    const q = text.toLowerCase();
+    for (const item of kb) {
+      if (item.keys.some(k => q.includes(k))) return item.ans;
+    }
+    return 'Хороший вопрос! 🤔 Я пока не нашёл точного ответа.\n\nПопробуй:\n• Зайти на [mirea.ru](https://mirea.ru)\n• Написать в приёмную комиссию\n• Задать вопрос конкретнее — я постараюсь помочь! 😊';
+  }
+
+  window.sendMsg = function() {
+    if (isBotTyping) return;
+    const inp = document.getElementById('chat-input');
+    const btn = document.getElementById('chat-send-btn');
+    if (!inp || !inp.value.trim()) return;
+    const text = inp.value.trim();
+    inp.value = ''; inp.style.height = 'auto';
+    if (btn) btn.disabled = true;
+    const chips = document.getElementById('chat-chips');
+    if (chips) chips.style.display = 'none';
+    addMsg('user', text);
+    isBotTyping = true;
+    const statusEl = document.getElementById('chat-status-text');
+    if (statusEl) statusEl.innerHTML = '<span class="blink-dot">●</span> Печатает…';
+    setTimeout(showTyping, 150);
+    const delay = 650 + Math.min(text.length * 7, 750);
+    setTimeout(() => {
+      hideTyping();
+      addMsg('bot', griffonAnswer(text));
+      isBotTyping = false;
+      if (statusEl) statusEl.innerHTML = '<span class="blink-dot">●</span> Онлайн · Готов помочь';
+      if (btn) btn.disabled = false;
+      inp.focus();
+    }, delay);
+  };
+
+  window.quickSend = function(text) {
+    if (isBotTyping) return;
+    const inp = document.getElementById('chat-input');
+    if (!inp) return;
+    inp.value = text; inp.style.height = 'auto';
+    sendMsg();
+  };
+
+  window.clearChat = function() {
+    if (!confirm('Очистить историю переписки?')) return;
+    chatHistory = []; saveHistory();
+    const msgs = document.getElementById('chat-msgs');
+    if (msgs) msgs.innerHTML = '<div class="chat-welcome" id="chat-welcome"><div class="chat-welcome-avatar"><img src="griffon photo 2/ava.png" alt="Грифон" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div><h3>Привет! Я Грифон 👋</h3><p>Официальный ИИ-ассистент РТУ МИРЭА. Помогу узнать всё о поступлении, учёбе и жизни в университете.</p></div>';
+    const chips = document.getElementById('chat-chips');
+    if (chips) chips.style.display = '';
+  };
+
+  window.copyMsg = function(btn) {
+    const bubble = btn.closest('.msg-content').querySelector('.msg-bubble');
+    if (!bubble) return;
+    navigator.clipboard.writeText(bubble.innerText).then(() => {
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = '⎘'; }, 1500);
+    });
+  };
+
+  window.toggleChatTheme = function() {
+    const w = document.getElementById('chat-modal-wrap');
+    if (!w) return;
+    const dark = w.classList.toggle('dark-theme');
+    try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+  };
+
+  function pinToViewport(el) {
+    if (!el) return;
+    // Override any containing-block weirdness caused by ancestor transforms
+    el.style.position = 'fixed';
+    el.style.top = '0px';
+    el.style.left = '0px';
+    el.style.width = window.innerWidth + 'px';
+    el.style.height = window.innerHeight + 'px';
+  }
+
+  window.openChat = function() {
+    const w = document.getElementById('chat-modal-wrap');
+    const b = document.getElementById('chat-backdrop');
+    pinToViewport(w);
+    pinToViewport(b);
+    if (w) w.classList.add('open');
+    if (b) b.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('chat-input')?.focus(), 350);
+  };
+
+  window.closeChat = function() {
+    const w = document.getElementById('chat-modal-wrap');
+    const b = document.getElementById('chat-backdrop');
+    if (w) w.classList.remove('open');
+    if (b) b.classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  window.chatKeydown = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  };
+
+  window.chatInputChange = function(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    const btn = document.getElementById('chat-send-btn');
+    if (btn) btn.disabled = !el.value.trim();
+  };
+
+  function init() {
+    try { const t = localStorage.getItem(THEME_KEY); if (t === 'dark') { const w = document.getElementById('chat-modal-wrap'); if (w) w.classList.add('dark-theme'); } } catch(e) {}
+    loadHistory(); renderHistory();
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChat(); });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+/* ═══ HIDE SPLINE LOGO ═══ */
+(function hideSplineLogo() {
+  const viewer = document.querySelector('spline-viewer');
+  if (!viewer) return;
+  function tryHide() {
+    const shadow = viewer.shadowRoot;
+    if (!shadow) { setTimeout(tryHide, 200); return; }
+    const logo = shadow.querySelector('#logo');
+    if (!logo) { setTimeout(tryHide, 200); return; }
+    logo.style.display = 'none';
+  }
+  tryHide();
+})();
+
+/* ═══ MAIL TABS ═══ */
+function switchMail(idx, el) {
+  document.querySelectorAll('.mtab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const s0 = document.getElementById('mail-set-0');
+  const s1 = document.getElementById('mail-set-1');
+  if (s0) s0.style.display = idx === 0 ? 'grid' : 'none';
+  if (s1) s1.style.display = idx === 1 ? 'grid' : 'none';
+}
+</script>
+
+<script>
+/* ═══ 3D VIEWER INITIALIZATION ═══ */
+window.addEventListener('load', function() {
+  var container = document.getElementById('viewer3d');
+  if (!container) return;
+  function fallback() {
+    var ld = document.getElementById('viewer3d-loading');
+    if (ld) ld.innerHTML = '<img src="griffon photo 2/03 griffon all.png" style="width:100%;height:100%;object-fit:contain;padding:8px;">';
+  }
+  if (typeof THREE==='undefined'||typeof THREE.FBXLoader==='undefined'||typeof THREE.OrbitControls==='undefined') { fallback(); return; }
+  
+  var W = container.clientWidth || 360, H = container.clientHeight || 280;
+  var scene = new THREE.Scene(); 
+  scene.background = new THREE.Color(0x120906);
+  
+  var cam = new THREE.PerspectiveCamera(42, W/H, 1, 5000); 
+  cam.position.set(0, 100, 300);
+  
+  var rend = new THREE.WebGLRenderer({antialias: true});
+  rend.setSize(W, H); 
+  rend.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  rend.shadowMap.enabled = true; 
+  container.innerHTML = ''; 
+  container.appendChild(rend.domElement);
+  
+  scene.add(new THREE.AmbientLight(0xffe8d0, 0.7));
+  var d1 = new THREE.DirectionalLight(0xffe0c0, 1.4); d1.position.set(150, 250, 200); scene.add(d1);
+  var d2 = new THREE.DirectionalLight(0x7080ff, 0.3); d2.position.set(-150, 60, -150); scene.add(d2);
+  var d3 = new THREE.DirectionalLight(0xe07a3f, 0.8); d3.position.set(0, -80, -250); scene.add(d3);
+  
+  var ctrl = new THREE.OrbitControls(cam, rend.domElement);
+  ctrl.enableDamping = true; ctrl.dampingFactor = 0.07; ctrl.minDistance = 60; ctrl.maxDistance = 800;
+  ctrl.maxPolarAngle = Math.PI * 0.88; ctrl.autoRotate = true; ctrl.autoRotateSpeed = 1.5;
+  rend.domElement.addEventListener('pointerdown', function(){ ctrl.autoRotate = false; });
+  
+  var loader = new THREE.FBXLoader();
+  loader.load('griffon photo 2/03 griffon.fbx',
+    function(obj){
+      var box = new THREE.Box3().setFromObject(obj);
+      var sz = box.getSize(new THREE.Vector3());
+      var sc = 190 / Math.max(sz.x, sz.y, sz.z);
+      var ctr = box.getCenter(new THREE.Vector3());
+      
+      obj.scale.setScalar(sc); 
+      obj.position.copy(ctr.multiplyScalar(-sc));
+      obj.traverse(function(c){ 
+          if(c.isMesh) {
+              c.castShadow = true; 
+              c.receiveShadow = true;
+          }
+      });
+      scene.add(obj);
+      
+      var ld = document.getElementById('viewer3d-loading'); 
+      if(ld) ld.style.display = 'none';
+    },
+    function(xhr){
+      if(!xhr.total) return;
+      var pct = Math.round(xhr.loaded / xhr.total * 100);
+      var ld = document.getElementById('viewer3d-loading');
+      if(ld){
+          var sp = ld.querySelector('span');
+          if(sp) sp.textContent = 'Загрузка ' + pct + '%';
+      }
+    },
+    function(e){
+        console.warn('3D Load Error:', e);
+        fallback();
+    }
+  );
+  
+  window.addEventListener('resize', function() {
+      var w = container.clientWidth, h = container.clientHeight;
+      cam.aspect = w/h; cam.updateProjectionMatrix(); rend.setSize(w, h);
+  });
+  
+  (function anim(){
+      requestAnimationFrame(anim);
+      ctrl.update();
+      rend.render(scene, cam);
+  })();
+});
+
+/* ── Intro FX: 3D tilt + parallax ── */
+(function initIntroFX() {
+  const section = document.getElementById('intro');
+  if (!section) return;
+  const card    = section.querySelector('.profile-card');
+  const griffon = section.querySelector('.intro-griffon');
+
+  section.addEventListener('mousemove', function(e) {
+    const r  = section.getBoundingClientRect();
+    const nx = (e.clientX - r.left)  / r.width  * 2 - 1;
+    const ny = (e.clientY - r.top)   / r.height * 2 - 1;
+    card.style.transform    = 'perspective(800px) rotateY(' + (nx*6) + 'deg) rotateX(' + (-ny*5) + 'deg)';
+    griffon.style.transform = 'translate(' + (-nx*10) + 'px,' + (-ny*6) + 'px)';
+  });
+  section.addEventListener('mouseleave', function() {
+    card.style.transform    = '';
+    griffon.style.transform = '';
+  });
+})();
+
+/* ── Intro FX: age counter + tags + dividers ── */
+(function initAgeCounter() {
+  const el = document.getElementById('age-count');
+  if (!el) return;
+  var fired = false;
+  var io = new IntersectionObserver(function(entries) {
+    if (!entries[0].isIntersecting || fired) return;
+    fired = true;
+    io.disconnect();
+    var target = 18, dur = 900, start = performance.now();
+    function tick(now) {
+      var p    = Math.min((now - start) / dur, 1);
+      var ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(ease * target);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    document.querySelectorAll('#intro .tags').forEach(function(t){ t.classList.add('tags-revealed'); });
+    var pc = document.querySelector('#intro .profile-card');
+    if (pc) pc.classList.add('dividers-in');
+  }, { threshold: 0.3 });
+  io.observe(document.getElementById('intro'));
+})();
+</script>
+</body>
+</html>
