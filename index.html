@@ -229,6 +229,7 @@ section { min-height:100vh; display:flex; align-items:center; justify-content:ce
  max-width:780px; position:relative; z-index:2;
   filter:drop-shadow(0 32px 64px rgba(196,98,45,0.25));
   animation:heroFloat 5.5s ease-in-out infinite;
+  mix-blend-mode:screen;
 }
 @keyframes heroFloat{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-16px) rotate(0.5deg)}}
 .hero-glow { position:absolute; bottom:-10px; width:300px; height:60px; background:radial-gradient(ellipse,rgba(196,98,45,0.35) 0%,transparent 70%); filter:blur(20px); z-index:1; }
@@ -275,6 +276,7 @@ section { min-height:100vh; display:flex; align-items:center; justify-content:ce
   width:100%;
   filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));
   animation:heroFloat 4.5s ease-in-out infinite;
+  mix-blend-mode:screen;
 }
 .intro-griffon::after { content:''; position:absolute; bottom:-10px; width:180px; height:28px; background:radial-gradient(ellipse,rgba(196,98,45,0.22),transparent 70%); filter:blur(10px); }
 .intro-griffon { transition:transform 0.08s linear; }
@@ -384,6 +386,7 @@ section { min-height:100vh; display:flex; align-items:center; justify-content:ce
   background:linear-gradient(180deg,rgba(196,98,45,0.06) 0%,rgba(196,98,45,0.03) 100%);
   display:flex; align-items:center; justify-content:center;
 }
+.outfit-img img { mix-blend-mode:screen; }
 .outfit-icon { font-size:48px; opacity:0.4; }
 .outfit-footer { padding:16px; border-top:0.5px solid var(--border); }
 .outfit-name { font-size:14px; font-weight:600; letter-spacing:-0.2px; margin-bottom:4px; }
@@ -405,6 +408,7 @@ section { min-height:100vh; display:flex; align-items:center; justify-content:ce
   background:linear-gradient(160deg,rgba(196,98,45,0.07),rgba(196,98,45,0.03));
   display:flex; align-items:center; justify-content:center;
 }
+.emotion-img img { mix-blend-mode:screen; }
 .emotion-emoji { font-size:64px; filter:drop-shadow(0 4px 12px rgba(196,98,45,0.3)); }
 .emotion-footer { padding:14px; border-top:0.5px solid var(--border); }
 .emotion-name { font-size:15px; font-weight:600; letter-spacing:-0.3px; }
@@ -419,6 +423,7 @@ section { min-height:100vh; display:flex; align-items:center; justify-content:ce
   width:300px;
   filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));
   animation:heroFloat 5s ease-in-out infinite;
+  mix-blend-mode:screen;
 }
 .usage-griffon::after { content:''; position:absolute; bottom:-10px; width:180px; height:28px; background:radial-gradient(ellipse,rgba(196,98,45,0.2),transparent 70%); filter:blur(10px); }
 .usage-list { display:flex; flex-direction:column; gap:16px; }
@@ -1269,7 +1274,7 @@ footer {
       </div>
       <div class="intro-griffon reveal d2">
         <div class="usage-griffon reveal">
-        <video class="usage-griffon-img" autoplay loop muted playsinline webkit-playsinline x5-playsinline preload="metadata" poster="griffon photo 2/02 hi.png" style="width:100%;filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));animation:heroFloat 5s ease-in-out infinite;background:transparent;>
+        <video class="usage-griffon-img" autoplay loop muted playsinline webkit-playsinline x5-playsinline preload="metadata" poster="griffon photo 2/02 hi.png" style="width:100%;filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));animation:heroFloat 5s ease-in-out infinite;background:transparent;mix-blend-mode:screen;">
           <source src="griffon photo 2/02-best.mov" type="video/mp4; codecs=hvc1">
           <source src="griffon photo 2/02-best.webm" type="video/webm; codecs=vp09.00.41.08">
         </video>
@@ -1443,7 +1448,7 @@ footer {
   <div class="container">
     <div class="usage-wrap">
       <div class="usage-griffon reveal">
-        <video class="usage-griffon-img" autoplay loop muted playsinline webkit-playsinline x5-playsinline style="width:150%;filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));animation:heroFloat 5s ease-in-out infinite;background:transparent;">
+        <video class="usage-griffon-img" autoplay loop muted playsinline webkit-playsinline x5-playsinline style="width:150%;filter:drop-shadow(0 24px 48px rgba(196,98,45,0.2));animation:heroFloat 5s ease-in-out infinite;background:transparent;mix-blend-mode:screen;">
           <source src="griffon photo 2/06-best.mov" type="video/mp4; codecs=hvc1">
           <source src="griffon photo 2/06-best.webm" type="video/webm; codecs=vp09.00.41.08">
         </video>
