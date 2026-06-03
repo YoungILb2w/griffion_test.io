@@ -1028,7 +1028,7 @@ section { min-height:100vh; display:flex; align-items:center; justify-content:ce
 /* ═══════════════════════════════════════
    15. СПАСИБО
 ══════════════════════════════════════*/
-#thanks { background:var(--bg); border-top:0.5px solid var(--border); min-height:100vh; }
+#thanks { background:var(--bg); border-top:0.5px solid var(--border); min-height:100vh; position:relative; }
 #thanks-canvas { position:absolute; inset:0; pointer-events:none; z-index:0; }
 .thanks-inner { text-align:center; position:relative; z-index:1; max-width:800px; margin:0 auto; }
 .thanks-title {
@@ -1041,7 +1041,7 @@ section { min-height:100vh; display:flex; align-items:center; justify-content:ce
 }
 .thanks-sub { font-size:16px; color:var(--muted); margin-bottom:48px; letter-spacing:-0.1px; }
 .thanks-griffon {
-  width:500px; margin:0 auto 10px;
+  width:min(500px,90vw); margin:0 auto 10px; display:block;
   filter:drop-shadow(0 24px 48px rgba(196,98,45,0.22));
   animation:heroFloat 5s ease-in-out infinite;
 }
