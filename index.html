@@ -2441,12 +2441,31 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
 
   // Collect all images
   var imgs = Array.from(document.images).filter(function(i){ return i.id !== 'pre-griffon'; });
-  var total = imgs.length + 1; // +1 for DOMContentLoaded
+  var total = imgs.length + 2; // +1 window.load, +1 spline
   var loaded = 0;
+  var windowLoaded = false;
+  var splineLoaded = false;
+  var minTime = 2000;
+  var startTime = Date.now();
 
   function tick() {
-    loaded++;
+    loaded = Math.min(loaded + 1, total);
     setProgress((loaded / total) * 100);
+  }
+
+  function tryFinish() {
+    if (!windowLoaded || !splineLoaded) return;
+    var elapsed = Date.now() - startTime;
+    var remaining = Math.max(0, minTime - elapsed);
+    var current = (loaded / total) * 100;
+    var steps = 30;
+    var step = (100 - current) / steps;
+    var i = 0;
+    var anim = setInterval(function(){
+      current = Math.min(100, current + step);
+      setProgress(current);
+      if (current >= 100 || ++i >= steps) { clearInterval(anim); setProgress(100); }
+    }, remaining / steps);
   }
 
   imgs.forEach(function(img) {
@@ -2454,26 +2473,26 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
     else { img.addEventListener('load', tick); img.addEventListener('error', tick); }
   });
 
-  // Minimum display time + window load fallback
-  var minTime = 1200;
-  var startTime = Date.now();
-
   window.addEventListener('load', function() {
-    var elapsed = Date.now() - startTime;
-    var remaining = Math.max(0, minTime - elapsed);
-    // Animate to 100% smoothly
-    var current = loaded / total * 100;
-    var step = (100 - current) / 20;
-    var i = 0;
-    var anim = setInterval(function(){
-      current = Math.min(100, current + step);
-      setProgress(current);
-      if (current >= 100 || ++i > 20) clearInterval(anim);
-    }, remaining / 20);
+    windowLoaded = true;
+    tick();
+    tryFinish();
   });
 
-  // Safety fallback — hide after 5s no matter what
-  setTimeout(function(){ if (el && !el.classList.contains('hide')) finish(); }, 5000);
+  // Wait for Spline 3D scene
+  var splineEl = document.querySelector('spline-viewer');
+  if (splineEl) {
+    splineEl.addEventListener('load', function() {
+      splineLoaded = true; tick(); tryFinish();
+    });
+    // Spline fallback — if it takes too long, don't block forever
+    setTimeout(function(){ if (!splineLoaded) { splineLoaded = true; tick(); tryFinish(); } }, 4000);
+  } else {
+    splineLoaded = true;
+  }
+
+  // Safety fallback — hide after 8s no matter what
+  setTimeout(function(){ if (el && !el.classList.contains('hide')) { setProgress(100); finish(); } }, 8000);
 })();
 </script>
 </body>
