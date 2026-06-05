@@ -1223,6 +1223,19 @@ footer {
 </nav>
 <section id="hero">
   <spline-viewer loading-anim-type="spinner-small-dark" url="https://prod.spline.design/sGvpPOOwYPgiquWd/scene.splinecode" hide-ui="true"></spline-viewer>
+  <script>
+  // Attach the Spline 'load' listener the instant the element is parsed,
+  // so a fast/cached load can't fire before we're listening (race-free).
+  (function(){
+    var sv = document.currentScript.previousElementSibling;
+    if (sv && sv.tagName && sv.tagName.toLowerCase() === 'spline-viewer') {
+      sv.addEventListener('load', function(){
+        window.__splineReady = true;
+        if (window.__notifyLoad) window.__notifyLoad();
+      });
+    }
+  })();
+  </script>
   <canvas id="hero-canvas" width="3000" height="200"></canvas>
   <div class="hero-inner">
     <div class="hero-left">
@@ -2341,9 +2354,13 @@ window.init3D = function() {
           }
       });
       scene.add(obj);
-      
-      var ld = document.getElementById('viewer3d-loading'); 
+
+      var ld = document.getElementById('viewer3d-loading');
       if(ld) ld.style.display = 'none';
+
+      // Signal that the 3D model is fully loaded (for the preloader)
+      window.__model3DReady = true;
+      if (window.__notifyLoad) window.__notifyLoad();
     },
     function(xhr){
       if(!xhr.total) return;
@@ -2357,19 +2374,31 @@ window.init3D = function() {
     function(e){
         console.warn('3D Load Error:', e);
         fallback();
+        // Don't block the preloader if the model fails
+        window.__model3DReady = true;
+        if (window.__notifyLoad) window.__notifyLoad();
     }
   );
-  
+
   window.addEventListener('resize', function() {
       var w = container.clientWidth, h = container.clientHeight;
       cam.aspect = w/h; cam.updateProjectionMatrix(); rend.setSize(w, h);
   });
-  
-  (function anim(){
-      requestAnimationFrame(anim);
+
+  // Render only while the viewer is on screen — saves GPU when scrolled away
+  var onScreen = false;
+  var rafId = null;
+  function anim(){
+      rafId = requestAnimationFrame(anim);
       ctrl.update();
       rend.render(scene, cam);
-  })();
+  }
+  var visObs = new IntersectionObserver(function(entries){
+      onScreen = entries[0].isIntersecting;
+      if (onScreen && rafId === null) { anim(); }
+      else if (!onScreen && rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+  }, { threshold: 0 });
+  visObs.observe(container);
 };
 
 /* ── Intro FX: 3D tilt + parallax ── */
@@ -2449,11 +2478,14 @@ window.init3D = function() {
     { at:100,label:'Добро пожаловать!' }
   ];
 
-  // Visual progress — always animates 0→100 over ANIM_MS milliseconds
-  var ANIM_MS = 2200;
+  // The bar climbs to HOLD_AT over MIN_MS, then waits for the 3D resources
+  // (Spline scene + FBX model). Once both are ready, it completes to 100%.
+  var MIN_MS = 2000;     // minimum time the bar takes to reach HOLD_AT
+  var HOLD_AT = 90;      // hold here until 3D resources are ready
+  var MAX_MS = 15000;    // absolute safety cap — never wait longer than this
   var visual = 0;
-  var resourcesReady = false;
   var finished = false;
+  var completing = false;
 
   function setVisual(p) {
     p = Math.min(100, p);
@@ -2477,73 +2509,100 @@ window.init3D = function() {
     }, 600);
   }
 
-  // Time-based animation: always runs full 0→100 in ANIM_MS
-  var startTime = performance.now();
-  var animFrame;
-  function animate(now) {
-    var elapsed = now - startTime;
-    var p = Math.min(100, (elapsed / ANIM_MS) * 100);
-    setVisual(p);
-    if (p < 100) {
-      animFrame = requestAnimationFrame(animate);
-    } else {
-      // Animation done — finish only if resources are ready too
-      if (resourcesReady) finish();
-    }
+  function resourcesReady() {
+    return window.__splineReady === true && window.__model3DReady === true;
   }
-  animFrame = requestAnimationFrame(animate);
 
-  // Resources ready = animation completes (no waiting for window.load)
-  // This avoids LCP being blocked by slow external resources (Spline, Three.js)
-  resourcesReady = true;
+  // Smoothly run the bar from its current value to 100, then finish
+  function completeToFull() {
+    if (completing || finished) return;
+    completing = true;
+    var from = visual, t0 = performance.now(), dur = 500;
+    (function step(now){
+      var k = Math.min(1, (now - t0) / dur);
+      setVisual(from + (100 - from) * k);
+      if (k < 1) requestAnimationFrame(step);
+      else finish();
+    })(performance.now());
+  }
 
-  // Safety fallback
-  setTimeout(function(){ if (!finished) finish(); }, 6000);
+  // Phase 1: climb to HOLD_AT over MIN_MS, then creep slowly toward 99 while
+  // waiting for 3D resources (so the bar never looks frozen on slow networks).
+  var startTime = performance.now();
+  function animate(now) {
+    if (finished || completing) return;
+    var elapsed = now - startTime;
+    var p;
+    if (elapsed < MIN_MS) {
+      p = (elapsed / MIN_MS) * HOLD_AT;
+    } else {
+      // Asymptotic creep HOLD_AT → 99 over ~10s
+      var over = elapsed - MIN_MS;
+      p = HOLD_AT + (99 - HOLD_AT) * (1 - Math.exp(-over / 4000));
+    }
+    setVisual(p);
+    if (elapsed >= MIN_MS && resourcesReady()) { completeToFull(); return; }
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  // Phase 2: when resources become ready (after the hold point), complete
+  window.__notifyLoad = function() {
+    if (visual >= HOLD_AT - 0.5 && resourcesReady()) completeToFull();
+  };
+
+  // Absolute safety cap
+  setTimeout(function(){ if (!finished) completeToFull(); }, MAX_MS);
 })();
 </script>
 <script>
-// Preload Three.js + FBX during preloader animation (background, no blocking)
+// Load Three.js + FBX model AND track Spline readiness DURING the preloader,
+// so the user can scroll a fully-loaded page with animations ready.
 (function(){
-  var threeReady = false;
+  window.__model3DReady = window.__model3DReady || false;
+  window.__splineReady  = window.__splineReady  || false;
+
+  /* ---- Spline readiness ---- */
+  // The 'load' listener is attached inline right after the <spline-viewer>
+  // element (race-free). Here we only add a safety net so a stuck/absent
+  // Spline scene can't block the preloader forever.
+  if (!document.querySelector('spline-viewer')) {
+    window.__splineReady = true;
+  } else {
+    setTimeout(function(){
+      if (!window.__splineReady) { window.__splineReady = true; if (window.__notifyLoad) window.__notifyLoad(); }
+    }, 12000);
+  }
+
+  /* ---- Load Three.js scripts, then init the FBX model immediately ---- */
   var scripts = [
     'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
     'https://cdn.jsdelivr.net/npm/fflate@0.6.9/umd/index.js',
     'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
     'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js'
   ];
-
   function loadScripts(cb) {
     var idx = 0;
-    function next() {
-      if (idx >= scripts.length) { threeReady = true; if (cb) cb(); return; }
+    (function next(){
+      if (idx >= scripts.length) { if (cb) cb(); return; }
       var s = document.createElement('script');
       s.src = scripts[idx++];
       s.onload = next;
+      s.onerror = function(){ window.__model3DReady = true; if (window.__notifyLoad) window.__notifyLoad(); };
       document.head.appendChild(s);
-    }
-    next();
+    })();
   }
 
-  // Start loading Three.js after 500ms (while preloader is showing)
-  setTimeout(function() {
-    loadScripts(function() {
-      // Three.js loaded — now prefetch the FBX into browser cache
-      fetch('griffon photo 2/03 griffon.fbx')
-        .then(function(r){ return r.arrayBuffer(); })
-        .catch(function(){}); // silent fail
-    });
-  }, 500);
+  // Start immediately so everything is ready by the time the preloader finishes
+  loadScripts(function(){
+    if (typeof window.init3D === 'function') { init3D(); }
+    else { window.__model3DReady = true; if (window.__notifyLoad) window.__notifyLoad(); }
+  });
 
-  // When user scrolls to creation section — init3D (scripts already loaded)
-  var section = document.getElementById('creation');
-  if (!section) return;
-  var obs = new IntersectionObserver(function(entries){
-    if (!entries[0].isIntersecting) return;
-    obs.disconnect();
-    if (threeReady) { init3D(); }
-    else { loadScripts(init3D); } // fallback if scripts not ready yet
-  }, { rootMargin: '300px' });
-  obs.observe(section);
+  // Safety: don't let a stuck model block the preloader beyond 14s
+  setTimeout(function(){
+    if (!window.__model3DReady) { window.__model3DReady = true; if (window.__notifyLoad) window.__notifyLoad(); }
+  }, 14000);
 })();
 </script>
 </body>
