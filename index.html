@@ -7,7 +7,8 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 <link rel="preconnect" href="https://unpkg.com">
-<link rel="dns-prefetch" href="https://prod.spline.design">
+<link rel="preconnect" href="https://prod.spline.design">
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.86/build/spline-viewer.js"></script>
 <style>
 /* ─── DESIGN TOKENS ─── */
 :root {
@@ -2469,19 +2470,6 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
 })();
 </script>
 <script>
-// Lazy-load Spline after preloader hides (not blocking initial render)
-(function(){
-  function loadSpline() {
-    if (document.querySelector('script[src*="spline-viewer"]')) return;
-    var s = document.createElement('script');
-    s.type = 'module';
-    s.src = 'https://unpkg.com/@splinetool/viewer@1.12.86/build/spline-viewer.js';
-    document.head.appendChild(s);
-  }
-  // Load spline 500ms after preloader would finish (3s animation + buffer)
-  setTimeout(loadSpline, 3500);
-})();
-
 // Lazy-load Three.js + FBX only when creation section enters viewport
 (function(){
   var loaded = false;
