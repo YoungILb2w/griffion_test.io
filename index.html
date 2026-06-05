@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ГРИФОН — Талисман и ИИ-ассистент РТУ МИРЭА</title>
-<script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.86/build/spline-viewer.js" defer></script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 <link rel="preconnect" href="https://unpkg.com">
@@ -1189,10 +1188,6 @@ footer {
   box-shadow:0 0 12px rgba(196,98,45,0.6);
 }
 </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/fflate@0.6.9/umd/index.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js" defer></script>
 </head>
 <body>
 <div id="preloader">
@@ -2272,7 +2267,7 @@ function switchMail(idx, el) {
 
 <script>
 /* ═══ 3D VIEWER INITIALIZATION ═══ */
-window.addEventListener('load', function() {
+window.init3D = function() {
   var container = document.getElementById('viewer3d');
   if (!container) return;
   function fallback() {
@@ -2351,7 +2346,7 @@ window.addEventListener('load', function() {
       ctrl.update();
       rend.render(scene, cam);
   })();
-});
+};
 
 /* ── Intro FX: 3D tilt + parallax ── */
 (function initIntroFX() {
@@ -2465,32 +2460,54 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
   }
   animFrame = requestAnimationFrame(animate);
 
-  // Track real resource loading
-  var windowLoaded = false;
-  var splineLoaded = false;
-
-  function checkReady() {
-    if (!windowLoaded || !splineLoaded) return;
-    resourcesReady = true;
-    // If animation already finished, close immediately
-    if (visual >= 100) finish();
-  }
-
-  window.addEventListener('load', function() {
-    windowLoaded = true;
-    checkReady();
-  });
-
-  var splineEl = document.querySelector('spline-viewer');
-  if (splineEl) {
-    splineEl.addEventListener('load', function() { splineLoaded = true; checkReady(); });
-    setTimeout(function(){ if (!splineLoaded) { splineLoaded = true; checkReady(); } }, 4000);
-  } else {
-    splineLoaded = true;
-  }
+  // Resources ready = animation completes (no waiting for window.load)
+  // This avoids LCP being blocked by slow external resources (Spline, Three.js)
+  resourcesReady = true;
 
   // Safety fallback
-  setTimeout(function(){ if (!finished) finish(); }, 9000);
+  setTimeout(function(){ if (!finished) finish(); }, 6000);
+})();
+</script>
+<script>
+// Lazy-load Spline after preloader hides (not blocking initial render)
+(function(){
+  function loadSpline() {
+    if (document.querySelector('script[src*="spline-viewer"]')) return;
+    var s = document.createElement('script');
+    s.type = 'module';
+    s.src = 'https://unpkg.com/@splinetool/viewer@1.12.86/build/spline-viewer.js';
+    document.head.appendChild(s);
+  }
+  // Load spline 500ms after preloader would finish (3s animation + buffer)
+  setTimeout(loadSpline, 3500);
+})();
+
+// Lazy-load Three.js + FBX only when creation section enters viewport
+(function(){
+  var loaded = false;
+  var section = document.getElementById('creation');
+  if (!section) return;
+  var obs = new IntersectionObserver(function(entries){
+    if (!entries[0].isIntersecting || loaded) return;
+    loaded = true;
+    obs.disconnect();
+    var scripts = [
+      'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+      'https://cdn.jsdelivr.net/npm/fflate@0.6.9/umd/index.js',
+      'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
+      'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js'
+    ];
+    var idx = 0;
+    function loadNext() {
+      if (idx >= scripts.length) { init3D(); return; }
+      var s = document.createElement('script');
+      s.src = scripts[idx++];
+      s.onload = loadNext;
+      document.head.appendChild(s);
+    }
+    loadNext();
+  }, { rootMargin: '200px' });
+  obs.observe(section);
 })();
 </script>
 </body>
