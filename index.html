@@ -1127,6 +1127,67 @@ footer {
   .laptop { width:100%; }
   .laptop-base { width:calc(100% + 20px); }
 }
+
+/* ═══════════════════════════════════════
+   PRELOADER
+══════════════════════════════════════*/
+#preloader {
+  position:fixed; inset:0; z-index:9999;
+  background:#1e1612;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column;
+  transition:transform 0.7s cubic-bezier(0.76,0,0.24,1), opacity 0.7s ease;
+}
+#preloader.hide {
+  transform:translateY(-100%);
+  opacity:0;
+  pointer-events:none;
+}
+.pre-inner {
+  display:flex; flex-direction:column; align-items:center;
+  gap:0; user-select:none;
+}
+.pre-griffon {
+  width:200px; height:200px; object-fit:contain;
+  filter:brightness(0) saturate(0);
+  transition:filter 0.8s ease;
+  animation:prePulse 2s ease-in-out infinite;
+}
+.pre-griffon.lit {
+  filter:brightness(1) saturate(1) drop-shadow(0 0 40px rgba(196,98,45,0.8));
+}
+@keyframes prePulse {
+  0%,100% { transform:translateY(0) scale(1); }
+  50% { transform:translateY(-8px) scale(1.03); }
+}
+.pre-percent {
+  font-size:clamp(56px,12vw,96px); font-weight:800;
+  letter-spacing:-4px; line-height:1;
+  margin-top:8px;
+  background:linear-gradient(135deg,#fff 20%,#e07a3f 60%,#fff 90%);
+  background-size:200% 200%; animation:preGrad 3s ease-in-out infinite;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+@keyframes preGrad {
+  0%,100% { background-position:0% 50%; }
+  50% { background-position:100% 50%; }
+}
+.pre-text {
+  font-size:15px; color:rgba(245,240,232,0.5);
+  letter-spacing:0.3px; margin-top:12px;
+  min-height:22px; text-align:center;
+  transition:opacity 0.3s ease;
+}
+.pre-bar-wrap {
+  position:fixed; bottom:0; left:0; right:0; height:3px;
+  background:rgba(255,255,255,0.06);
+}
+.pre-bar-fill {
+  height:100%; width:0%;
+  background:linear-gradient(90deg,#c4622d,#e07a3f);
+  transition:width 0.3s ease;
+  box-shadow:0 0 12px rgba(196,98,45,0.6);
+}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/fflate@0.6.9/umd/index.js" defer></script>
@@ -1134,6 +1195,14 @@ footer {
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js" defer></script>
 </head>
 <body>
+<div id="preloader">
+  <div class="pre-inner">
+    <img class="pre-griffon" id="pre-griffon" src="griffon photo 2/ava.webp" alt="Грифон">
+    <div class="pre-percent" id="pre-percent">0%</div>
+    <div class="pre-text" id="pre-text">Грифон просыпается...</div>
+  </div>
+  <div class="pre-bar-wrap"><div class="pre-bar-fill" id="pre-bar"></div></div>
+</div>
 
 <div id="cur"></div>
 <div id="curR"></div>
@@ -2335,6 +2404,77 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
     if (v && i) { v.style.display = 'none'; i.style.display = 'block'; }
   });
 }
+</script>
+<script>
+(function(){
+  var el = document.getElementById('preloader');
+  var pct = document.getElementById('pre-percent');
+  var txt = document.getElementById('pre-text');
+  var bar = document.getElementById('pre-bar');
+  var grif = document.getElementById('pre-griffon');
+
+  var stages = [
+    { at:0,  label:'Грифон просыпается...' },
+    { at:25, label:'Надевает куртку РТУ МИРЭА...' },
+    { at:50, label:'Расправляет крылья...' },
+    { at:75, label:'Готов к встрече!' },
+    { at:100,label:'Добро пожаловать!' }
+  ];
+
+  function setProgress(p) {
+    p = Math.min(100, Math.round(p));
+    pct.textContent = p + '%';
+    bar.style.width = p + '%';
+    for (var i = stages.length - 1; i >= 0; i--) {
+      if (p >= stages[i].at) { txt.textContent = stages[i].label; break; }
+    }
+    if (p >= 100) finish();
+  }
+
+  function finish() {
+    grif.classList.add('lit');
+    setTimeout(function(){
+      el.classList.add('hide');
+      setTimeout(function(){ el.style.display = 'none'; }, 700);
+    }, 600);
+  }
+
+  // Collect all images
+  var imgs = Array.from(document.images).filter(function(i){ return i.id !== 'pre-griffon'; });
+  var total = imgs.length + 1; // +1 for DOMContentLoaded
+  var loaded = 0;
+
+  function tick() {
+    loaded++;
+    setProgress((loaded / total) * 100);
+  }
+
+  imgs.forEach(function(img) {
+    if (img.complete) { tick(); }
+    else { img.addEventListener('load', tick); img.addEventListener('error', tick); }
+  });
+
+  // Minimum display time + window load fallback
+  var minTime = 1200;
+  var startTime = Date.now();
+
+  window.addEventListener('load', function() {
+    var elapsed = Date.now() - startTime;
+    var remaining = Math.max(0, minTime - elapsed);
+    // Animate to 100% smoothly
+    var current = loaded / total * 100;
+    var step = (100 - current) / 20;
+    var i = 0;
+    var anim = setInterval(function(){
+      current = Math.min(100, current + step);
+      setProgress(current);
+      if (current >= 100 || ++i > 20) clearInterval(anim);
+    }, remaining / 20);
+  });
+
+  // Safety fallback — hide after 5s no matter what
+  setTimeout(function(){ if (el && !el.classList.contains('hide')) finish(); }, 5000);
+})();
 </script>
 </body>
 </html>
