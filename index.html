@@ -2421,17 +2421,27 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
     { at:100,label:'Добро пожаловать!' }
   ];
 
-  function setProgress(p) {
-    p = Math.min(100, Math.round(p));
-    pct.textContent = p + '%';
+  // Visual progress — always animates 0→100 over ANIM_MS milliseconds
+  var ANIM_MS = 3000;
+  var visual = 0;
+  var resourcesReady = false;
+  var finished = false;
+
+  function setVisual(p) {
+    p = Math.min(100, p);
+    visual = p;
+    var r = Math.round(p);
+    pct.textContent = r + '%';
     bar.style.width = p + '%';
     for (var i = stages.length - 1; i >= 0; i--) {
-      if (p >= stages[i].at) { txt.textContent = stages[i].label; break; }
+      if (r >= stages[i].at) { txt.textContent = stages[i].label; break; }
     }
-    if (p >= 100) finish();
   }
 
   function finish() {
+    if (finished) return;
+    finished = true;
+    setVisual(100);
     grif.classList.add('lit');
     setTimeout(function(){
       el.classList.add('hide');
@@ -2439,60 +2449,48 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
     }, 600);
   }
 
-  // Collect all images
-  var imgs = Array.from(document.images).filter(function(i){ return i.id !== 'pre-griffon'; });
-  var total = imgs.length + 2; // +1 window.load, +1 spline
-  var loaded = 0;
+  // Time-based animation: always runs full 0→100 in ANIM_MS
+  var startTime = performance.now();
+  var animFrame;
+  function animate(now) {
+    var elapsed = now - startTime;
+    var p = Math.min(100, (elapsed / ANIM_MS) * 100);
+    setVisual(p);
+    if (p < 100) {
+      animFrame = requestAnimationFrame(animate);
+    } else {
+      // Animation done — finish only if resources are ready too
+      if (resourcesReady) finish();
+    }
+  }
+  animFrame = requestAnimationFrame(animate);
+
+  // Track real resource loading
   var windowLoaded = false;
   var splineLoaded = false;
-  var minTime = 2000;
-  var startTime = Date.now();
 
-  function tick() {
-    loaded = Math.min(loaded + 1, total);
-    setProgress((loaded / total) * 100);
-  }
-
-  function tryFinish() {
+  function checkReady() {
     if (!windowLoaded || !splineLoaded) return;
-    var elapsed = Date.now() - startTime;
-    var remaining = Math.max(0, minTime - elapsed);
-    var current = (loaded / total) * 100;
-    var steps = 30;
-    var step = (100 - current) / steps;
-    var i = 0;
-    var anim = setInterval(function(){
-      current = Math.min(100, current + step);
-      setProgress(current);
-      if (current >= 100 || ++i >= steps) { clearInterval(anim); setProgress(100); }
-    }, remaining / steps);
+    resourcesReady = true;
+    // If animation already finished, close immediately
+    if (visual >= 100) finish();
   }
-
-  imgs.forEach(function(img) {
-    if (img.complete) { tick(); }
-    else { img.addEventListener('load', tick); img.addEventListener('error', tick); }
-  });
 
   window.addEventListener('load', function() {
     windowLoaded = true;
-    tick();
-    tryFinish();
+    checkReady();
   });
 
-  // Wait for Spline 3D scene
   var splineEl = document.querySelector('spline-viewer');
   if (splineEl) {
-    splineEl.addEventListener('load', function() {
-      splineLoaded = true; tick(); tryFinish();
-    });
-    // Spline fallback — if it takes too long, don't block forever
-    setTimeout(function(){ if (!splineLoaded) { splineLoaded = true; tick(); tryFinish(); } }, 4000);
+    splineEl.addEventListener('load', function() { splineLoaded = true; checkReady(); });
+    setTimeout(function(){ if (!splineLoaded) { splineLoaded = true; checkReady(); } }, 4000);
   } else {
     splineLoaded = true;
   }
 
-  // Safety fallback — hide after 8s no matter what
-  setTimeout(function(){ if (el && !el.classList.contains('hide')) { setProgress(100); finish(); } }, 8000);
+  // Safety fallback
+  setTimeout(function(){ if (!finished) finish(); }, 9000);
 })();
 </script>
 </body>
