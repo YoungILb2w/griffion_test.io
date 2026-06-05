@@ -1872,9 +1872,11 @@ footer {
 </footer>
 
 <script>
-/* ═══ CURSOR ═══ */
+/* ═══ CURSOR (mouse devices only) ═══ */
 const cur = document.getElementById('cur');
 const curR = document.getElementById('curR');
+const hasMouse = window.matchMedia('(pointer: fine)').matches;
+if (hasMouse) {
 let mx=0, my=0, rx=0, ry=0;
 document.addEventListener('mousemove', e => {
   mx = e.clientX; my = e.clientY;
@@ -1890,6 +1892,7 @@ document.querySelectorAll('a,button,.outfit-card,.emotion-card,.scene-card,.merc
   el.addEventListener('mouseenter', () => document.body.classList.add('hovered'));
   el.addEventListener('mouseleave', () => document.body.classList.remove('hovered'));
 });
+} // end hasMouse
 
 /* reveal on scroll */
 (function initReveal() {
@@ -1937,14 +1940,20 @@ document.querySelectorAll('a,button,.outfit-card,.emotion-card,.scene-card,.merc
 /* ═══ NAV ACTIVE ═══ */
 const secs = document.querySelectorAll('section[id]');
 const navAs = document.querySelectorAll('.nav-links a');
+let _navTicking = false;
 window.addEventListener('scroll', () => {
-  let cur2 = '';
-  secs.forEach(s => { if(window.scrollY >= s.offsetTop - 80) cur2 = s.id; });
-  navAs.forEach(a => {
-    const active = a.getAttribute('href') === '#' + cur2;
-    a.classList.toggle('active', active);
+  if (_navTicking) return;
+  _navTicking = true;
+  requestAnimationFrame(() => {
+    let cur2 = '';
+    secs.forEach(s => { if(window.scrollY >= s.offsetTop - 80) cur2 = s.id; });
+    navAs.forEach(a => {
+      const active = a.getAttribute('href') === '#' + cur2;
+      a.classList.toggle('active', active);
+    });
+    _navTicking = false;
   });
-});
+}, { passive: true });
 
 /* ═══ PARTICLE CANVAS ═══ */
 function initCanvas(id, count) {
@@ -1964,6 +1973,7 @@ function initCanvas(id, count) {
     po: Math.random() * 0.4 + 0.05,
     do2: (Math.random() - 0.5) * 0.003,
   }));
+  let running = false, rafId = null;
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     pts.forEach(p => {
@@ -1976,12 +1986,23 @@ function initCanvas(id, count) {
       ctx.fillStyle = `rgba(224,122,63,${p.o})`;
       ctx.fill();
     });
-    requestAnimationFrame(draw);
+    rafId = requestAnimationFrame(draw);
   }
-  draw();
+  // Only animate while the canvas is actually visible on screen
+  const vis = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      if (!running) { running = true; draw(); }
+    } else {
+      running = false;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+  }, { threshold: 0 });
+  vis.observe(canvas);
 }
-initCanvas('hero-canvas', 300);
-initCanvas('thanks-canvas', 300);
+// Fewer particles on touch/mobile devices to keep scrolling smooth
+var _particleCount = (navigator.maxTouchPoints > 0 || window.innerWidth < 900) ? 90 : 300;
+initCanvas('hero-canvas', _particleCount);
+initCanvas('thanks-canvas', _particleCount);
 
 /* ═══ CAROUSEL ═══ */
 let cIdx = 0;
